@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>XR Stüdyo · Yazarak AR ve VR üret</title>
+<meta name="description" content="Ne istediğini Türkçe yaz; yapay zekâ ajanları AR/VR deneyimini kodlar, test eder ve her cihazda çalışır hale getirir. Bekleme listesine katıl.">
+<meta property="og:title" content="XR Stüdyo · Yazarak AR ve VR üret">
+<meta property="og:description" content="Quest, Android, iPhone ve tarayıcıda çalışan AR/VR deneyimlerini yazarak üret. Üç çalışan demoyu dene.">
+<meta property="og:image" content="img/kokpit.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Yerleşim: tek sütun okuma akışı (en fazla 1080px), demo kartları ızgarada, telefonda tek sütuna iner */
+:root {
+  --bg: #03070c; --surface: #0a141c; --line: #16303d; --fg: #e4f6fb; --muted: #8fb2bf;
+  --accent: #39e6ff; --accent-ink: #03141e; --ok: #7dffb0; --warm: #ffb347;
+  --f-display: Montserrat, "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-display); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1080px; margin: 0 auto; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
+h1, h2, h3 { line-height: 1.15; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding-block: calc(16px + env(safe-area-inset-top, 0px)) 16px; border-bottom: 1px solid var(--line); }
+.logo { font-weight: 800; font-size: 18px; letter-spacing: .02em; color: var(--fg); text-decoration: none; display: flex; align-items: center; gap: 10px; }
+.logo span { font-family: var(--f-mono); font-size: 11px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 2px 8px; }
+nav { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; }
+nav a { color: var(--muted); text-decoration: none; }
+nav a:hover { color: var(--fg); }
+
+.hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; padding-block: 56px 48px; }
+.hero > div { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.hero h1 { font-size: clamp(34px, 5.4vw, 58px); font-weight: 800; letter-spacing: -.01em; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lede { font-size: 18px; color: var(--muted); max-width: 52ch; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; justify-content: center; font: 700 15px var(--f-display); padding: 13px 22px; border-radius: 8px;
+  text-decoration: none; border: 1px solid var(--accent); cursor: pointer; touch-action: manipulation; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--accent); }
+.proof { display: flex; gap: 8px 20px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+.proof b { color: var(--ok); font-weight: 500; }
+.hero figure { margin: 0; position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.hero figure img { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; object-fit: cover; }
+.hero figcaption { position: absolute; left: 12px; bottom: 12px; font-family: var(--f-mono); font-size: 12px; background: rgba(3, 7, 12, .8); padding: 4px 10px; border-radius: 6px; color: var(--muted); }
+
+section { padding-block: 48px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; }
+section h2 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; }
+section .intro { color: var(--muted); max-width: 64ch; }
+
+.demos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.demo { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.demo img { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; object-fit: cover; border-bottom: 1px solid var(--line); }
+.demo .body { padding: 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.demo h3 { font-size: 19px; }
+.demo p { color: var(--muted); font-size: 15px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.chip { font-family: var(--f-mono); font-size: 11.5px; border: 1px solid var(--line); border-radius: 99px; padding: 2px 9px; color: var(--muted); }
+.demo .go { font-weight: 700; text-decoration: none; padding-top: 4px; }
+
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { counter-increment: s; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.steps li::before { content: "0" counter(s); font-family: var(--f-mono); color: var(--accent); font-size: 14px; }
+.steps h3 { font-size: 18px; }
+.steps p { color: var(--muted); font-size: 15px; }
+.prompt { font-family: var(--f-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 6px; padding: 10px 12px; color: var(--fg); }
+
+.devices { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 700; white-space: nowrap; }
+
+.dev { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+.dev ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
+.dev ul b { color: var(--fg); font-weight: 600; }
+.tag { display: inline-block; font-family: var(--f-mono); font-size: 11px; color: var(--warm); border: 1px solid currentColor; border-radius: 99px; padding: 1px 8px; vertical-align: 3px; margin-left: 6px; }
+
+#katil { scroll-margin-top: 16px; }
+form { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: grid; gap: 16px; max-width: 620px; }
+label { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
+input[type=email], select { font: 500 16px var(--f-display); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; }
+.consent { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; color: var(--muted); font-size: 13.5px; }
+.consent input { margin-top: 4px; width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+#formMsg { font-size: 15px; min-height: 1.6em; }
+#formMsg.ok { color: var(--ok); }
+#formMsg.warn { color: var(--warm); }
+
+footer { border-top: 1px solid var(--line); padding-block: 28px calc(28px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 13.5px; display: flex; gap: 12px 24px; flex-wrap: wrap; justify-content: space-between; }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; padding-block: 36px 32px; }
+  .demos, .steps { grid-template-columns: 1fr; }
+  .dev { grid-template-columns: 1fr; gap: 20px; }
+  nav { gap: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="#">XR Stüdyo <span>erken erişim</span></a>
+    <nav aria-label="Sayfa içi">
+      <a href="#demolar">Demolar</a>
+      <a href="#nasil">Nasıl çalışır</a>
+      <a href="#cihazlar">Cihazlar</a>
+      <a href="#katil">Listeye katıl</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <span class="eyebrow">Yapay zekâ ile AR · VR · XR</span>
+      <h1>Yazarak <em>AR ve VR</em> deneyimi üret.</h1>
+      <p class="lede">Ne istediğini Türkçe yaz. Yapay zekâ ajanları kodu yazar, kendi testlerini çalıştırır ve sonucu Quest gözlükte, Android ve iPhone'da, tarayıcıda açılan bir bağlantı olarak verir. İnce ayarı fareyle, parmağınla ya da elinle sen yaparsın.</p>
+      <div class="cta">
+        <a class="btn primary" href="#katil">Bekleme listesine katıl</a>
+        <a class="btn ghost" href="#demolar">Demoları dene</a>
+      </div>
+      <p class="proof"><span><b>3</b> çalışan demo</span><span><b>31</b> otomatik test</span><span><b>0</b> kurulum, link ile açılır</span></p>
+    </div>
+    <figure>
+      <img src="img/kokpit.jpg" alt="Kokpit HUD demosu: pusula, nişangâh, enerji barı ve skor paneli, uzayda uçan hedefler" width="960" height="600">
+      <figcaption>Kokpit HUD · yazışarak üretildi</figcaption>
+    </figure>
+  </div>
+
+  <section id="demolar" aria-labelledby="demolar-h">
+    <span class="eyebrow">Şimdi dene</span>
+    <h2 id="demolar-h">Üç demo, tek satır kod yazmadan</h2>
+    <p class="intro">Hepsi Türkçe yazışmalarla üretildi ve otomatik testlerden geçti. Telefonda, bilgisayarda ya da Quest tarayıcısında aç.</p>
+    <div class="demos">
+      <article class="demo">
+        <img src="img/kokpit.jpg" alt="Kokpit HUD demosu" loading="lazy" width="960" height="600">
+        <div class="body">
+          <h3>Kokpit HUD</h3>
+          <p>Bakışla hedefe kilitlen, ateş et. Paneller ortama göre kendini düzenler; VR'da elle tutup taşırsın.</p>
+          <div class="chips"><span class="chip">VR</span><span class="chip">AR</span><span class="chip">telefon</span><span class="chip">masaüstü</span></div>
+          <a class="go" href="../">Aç →</a>
+        </div>
+      </article>
+      <article class="demo">
+        <img src="img/ar-etiket.jpg" alt="AR etiket demosu: masadaki ürünlerin üstünde bilgi, fiyat ve uyarı kartları" loading="lazy" width="960" height="600">
+        <div class="body">
+          <h3>AR bilgi etiketleri</h3>
+          <p>Kamerada masaya dokun, ürünün üstüne fiyat, bilgi ya da uyarı kartı yerleşsin. Mağaza ve vitrin için.</p>
+          <div class="chips"><span class="chip">Android AR</span><span class="chip">iPhone</span><span class="chip">masaüstü</span></div>
+          <a class="go" href="../ar-etiket/">Aç →</a>
+        </div>
+      </article>
+      <article class="demo">
+        <img src="img/el-menu.jpg" alt="El menüsü demosu: kaide üstünde ürün modeli ve ürün ayarları menüsü" loading="lazy" width="960" height="600">
+        <div class="body">
+          <h3>El menüsü</h3>
+          <p>Bileğindeki menüden ürünün rengini, boyutunu, ışığını değiştir. Parmağınla dokun ya da ışınla seç.</p>
+          <div class="chips"><span class="chip">Quest el takibi</span><span class="chip">telefon</span><span class="chip">masaüstü</span></div>
+          <a class="go" href="../el-menu/">Aç →</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="nasil" aria-labelledby="nasil-h">
+    <span class="eyebrow">Nasıl çalışır</span>
+    <h2 id="nasil-h">Yaz, ajanlar üretsin, her cihazda aç</h2>
+    <ol class="steps">
+      <li>
+        <h3>Ne istediğini yaz</h3>
+        <p>Türkçe, kendi kelimelerinle. Referans görsel de ekleyebilirsin.</p>
+        <p class="prompt">"Bilim-kurgu kokpit HUD'u: üstte pusula, ortada hedef kilidi, solda enerji barı."</p>
+      </li>
+      <li>
+        <h3>Ajanlar kodlar ve test eder</h3>
+        <p>Tasarımcı ajan yerleşimi planlar, geliştirici ajan kodlar. Test ajanı da sanal Quest ve telefonda deneyip hataları kendisi düzeltir.</p>
+      </li>
+      <li>
+        <h3>Link ile aç, ince ayar yap</h3>
+        <p>Sonuç tek bir bağlantı. Paneli fareyle, iki parmağınla ya da gözlükte elinle taşı; ayarlar her cihaz için ayrı kalır.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section id="cihazlar" aria-labelledby="cihazlar-h">
+    <span class="eyebrow">Uyumluluk</span>
+    <h2 id="cihazlar-h">Hangi cihazda açılırsa ona uyar</h2>
+    <div class="devices">
+      <table>
+        <thead><tr><th>Cihaz</th><th>Ne çalışıyor</th></tr></thead>
+        <tbody>
+          <tr><td>Meta Quest</td><td>Tam VR, kumanda ve el takibi, panelleri elle tutup taşıma</td></tr>
+          <tr><td>Android telefon</td><td>Kamerada AR (yüzey algılama), dokunma, iki parmakla düzenleme, telefonu çevirerek bakma</td></tr>
+          <tr><td>iPhone / iPad</td><td>3D görünüm, telefonu çevirerek bakma, dokunma; tarayıcı WebXR desteklemediği için AR yerine sanal oda</td></tr>
+          <tr><td>Bilgisayar</td><td>Fare, klavye, oyun kumandası; X/Y/Z oklarıyla düzenleme</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="gelistirici" aria-labelledby="gelistirici-h">
+    <span class="eyebrow">Geliştiriciler ve tasarımcılar</span>
+    <div class="dev">
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+        <h2 id="gelistirici-h">Ürettiğini yayınla, sat <span class="tag">planlanıyor</span></h2>
+        <p class="intro">Platformun mağazasında kendi şablonlarını, HUD kitlerini ve ajanlarını satabileceksin. Claude Code, Cursor gibi araçlardan doğrudan yayın yapılabilecek.</p>
+      </div>
+      <ul>
+        <li><b>Şablon ve kitler:</b> HUD setleri, AR katalogları, VR galeri iskeletleri</li>
+        <li><b>Ajan ve skill paketleri:</b> "Quest performans denetçisi" gibi hazır uzmanlar</li>
+        <li><b>Gelir paylaşımı:</b> satışların büyük kısmı üreticiye</li>
+        <li><b>GitHub ile yayın:</b> repoyu bağla, sürüm çıkınca otomatik listelensin</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="katil" aria-labelledby="katil-h">
+    <span class="eyebrow">Erken erişim</span>
+    <h2 id="katil-h">Bekleme listesine katıl</h2>
+    <p class="intro">İlk sürüm açıldığında haber verelim. Listedekiler yeni demoları ve ilk sürümü herkesten önce dener.</p>
+    <form id="waitlist" novalidate>
+      <label for="email">E-posta adresin
+        <input id="email" name="email" type="email" autocomplete="email" required placeholder="ornek@eposta.com">
+      </label>
+      <label for="role">Seni en iyi ne anlatıyor?
+        <select id="role" name="role">
+          <option>Geliştiriciyim</option>
+          <option>Tasarımcıyım</option>
+          <option>Marka / ajans adına bakıyorum</option>
+          <option>İçerik üreticisiyim</option>
+          <option>Merak ediyorum</option>
+        </select>
+      </label>
+      <label class="consent" for="consent">
+        <input id="consent" name="consent" type="checkbox" required>
+        <span>E-posta adresimin yalnızca bu proje hakkında bilgilendirme için kullanılmasını kabul ediyorum. İstediğim zaman listeden çıkabilirim.</span>
+      </label>
+      <button class="btn primary" type="submit" id="submitBtn">Listeye katıl</button>
+      <p id="formMsg" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <footer>
+    <span>XR Stüdyo erken aşama bir projedir · adı ve özellikleri değişebilir.</span>
+    <span>Demolar açık kaynak: <a href="https://github.com/semihcarter5/xr-hud-demo">GitHub</a></span>
+  </footer>
+</div>
+
+<script>
+// Bekleme listesi: Google Form'a gönderir. Form bağlanana kadar kayıt alındı DENMEZ.
+// Bağlamak için: Google Form'un "formResponse" adresi ve alanların entry.XXXX adları aşağıya yazılır.
+var WAITLIST = {
+  action: '',        // örn. https://docs.google.com/forms/d/e/FORM_ID/formResponse
+  emailField: '',    // örn. entry.123456789
+  roleField: ''      // örn. entry.987654321
+};
+
+var form = document.getElementById('waitlist');
+var msg = document.getElementById('formMsg');
+var btn = document.getElementById('submitBtn');
+function say(text, kind) { msg.textContent = text; msg.className = kind || ''; }
+
+form.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var email = form.email.value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { say('Geçerli bir e-posta adresi yaz.', 'warn'); form.email.focus(); return; }
+  if (!form.consent.checked) { say('Devam etmek için onay kutusunu işaretle.', 'warn'); form.consent.focus(); return; }
+  if (!WAITLIST.action) {
+    say('Liste çok yakında açılıyor. Şimdilik demoları deneyebilirsin; bu sayfaya tekrar uğra.', 'warn');
+    return;
+  }
+  var data = new FormData();
+  data.append(WAITLIST.emailField, email);
+  if (WAITLIST.roleField) data.append(WAITLIST.roleField, form.role.value);
+  btn.disabled = true;
+  say('Gönderiliyor…');
+  // Google Form yanıtı okunamaz (no-cors); ağ hatası yoksa kayıt alınmıştır
+  fetch(WAITLIST.action, { method: 'POST', mode: 'no-cors', body: data })
+    .then(function () { say('Listeye eklendin. İlk sürüm açılınca haber vereceğiz.', 'ok'); form.reset(); })
+    .catch(function () { say('Gönderilemedi. İnternet bağlantını kontrol edip tekrar dene.', 'warn'); })
+    .finally(function () { btn.disabled = false; });
+});
+</script>
+</body>
+</html>
