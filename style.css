@@ -28,3 +28,5 @@ canvas { display: block; touch-action: none; }
 #boot { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; white-space: pre-line; z-index: 5; pointer-events: none; }
 #boot[hidden] { display: none; }
 #boot.err { background: rgba(40, 6, 12, .94); color: #ffd6dc; pointer-events: auto; overflow-wrap: anywhere; }
+/* Demolar arası geçiş bağlantısı */
+#navlink { position: fixed; top: calc(64px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); color: #bff6ff; font-size: 13px; z-index: 2; opacity: .85; }
