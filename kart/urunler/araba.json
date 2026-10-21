@@ -1,0 +1,33 @@
+{
+  "example": true,
+  "brand": {
+    "name": "Örnek Oyuncak",
+    "tagline": "Hayali bir koleksiyon oyuncak dükkânı (örnek çalışma)",
+    "accent": "#c0392b"
+  },
+  "product": {
+    "name": "Koleksiyon Oyuncak Araba",
+    "price": 690,
+    "currency": "TRY",
+    "description": "Kırmızı kadife sergi örtüsü üzerinde klasik yeşil koleksiyon arabası. Rafında nasıl duracağını AR ile gör.",
+    "features": [
+      "Parlak yeşil vernikli gövde",
+      "Şeffaf camlar ve krom detaylar",
+      "Kadife sergi örtüsü dahil"
+    ],
+    "dimensions": "7,3 × 7,4 × 2,9 cm, sergi örtüsüyle (G × D × Y)"
+  },
+  "model": {
+    "src": "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/ToyCar/glTF-Binary/ToyCar.glb",
+    "alt": "Kırmızı kadife örtü üzerinde yeşil koleksiyon oyuncak araba",
+    "cameraOrbit": "30deg 70deg auto"
+  },
+  "cta": {
+    "label": "Satın al",
+    "url": ""
+  },
+  "credit": {
+    "text": "Toy Car, Khronos Group (CC0)",
+    "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ToyCar"
+  }
+}

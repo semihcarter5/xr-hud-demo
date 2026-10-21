@@ -237,6 +237,24 @@ check('El menüsü: menü sol kumandayı takip ediyor', vrMenu.follows, vrMenu);
 check('El menüsü: sağ kumandayla "Işık" düğmesine basıldı (Stüdyo → Gün batımı)', vrMenu.hovered && vrMenu.light === 1, vrMenu);
 await shot('9-el-menu-vr.png');
 
+// 7) AR Ürün Kartı (model-viewer) ve portfolyo
+for (const [slug, variants] of [['koltuk', 2], ['lambader', 0], ['araba', 0]]) {
+  await open('kart/?u=' + slug);
+  const k = await run(`for (let i = 0; i < 80 && !(window.__kart && __kart.loaded); i++) await new Promise(r => setTimeout(r, 250));
+    const mv = __kart.mv; return { loaded: __kart.loaded, modes: mv.getAttribute('ar-modes'), ar: mv.hasAttribute('ar'), variants: mv.availableVariants.length,
+      qr: !!document.querySelector('#qr img, #qr canvas'), example: !document.getElementById('example').hidden, ctaHidden: document.getElementById('cta').hidden };`);
+  check(`AR kartı (${slug}): model yüklendi, iPhone (quick-look) + Android AR açık`, k.loaded && k.ar && /quick-look/.test(k.modes) && /scene-viewer/.test(k.modes), k);
+  check(`AR kartı (${slug}): örnek etiketi, QR ve seçenek sayısı doğru`, k.example && k.qr && k.variants === variants && k.ctaHidden, k);
+}
+await open('kart/?u=koltuk');
+const v = await run(`for (let i = 0; i < 80 && !__kart.loaded; i++) await new Promise(r => setTimeout(r, 250));
+  document.querySelectorAll('.swatch')[1].click(); await new Promise(r => setTimeout(r, 300));
+  return { variant: __kart.mv.variantName, price: document.getElementById('price').textContent };`);
+check('AR kartı: kumaş seçince model ve fiyat değişti', v.variant === 'Peacock Velvet' && /13\.400/.test(v.price), v);
+await open('portfolyo/');
+const pf = await run(`return { cards: document.querySelectorAll('.ex').length, imgs: [...document.querySelectorAll('.ex img')].every(i => i.complete && i.naturalWidth > 0), overflow: document.documentElement.scrollWidth > innerWidth };`);
+check('Portfolyo: 3 örnek kart, görseller yüklendi, taşma yok', pf.cards === 3 && pf.imgs && !pf.overflow, pf);
+
 check('Konsolda hata yok', errors.length === 0, errors);
 console.log(`\n${checks.filter(c => c.ok).length}/${checks.length} kontrol geçti · ekran görüntüleri: ${OUT}`);
 ws.close();

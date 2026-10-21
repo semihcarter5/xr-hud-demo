@@ -1,0 +1,24 @@
+{
+  "example": true,
+  "brand": { "name": "Örnek Mobilya", "tagline": "Hayali bir mobilya mağazası (örnek çalışma)", "accent": "#b5652e" },
+  "product": {
+    "name": "Kadife Berjer",
+    "price": 12900,
+    "currency": "TRY",
+    "description": "Kapitone kadife oturak ve masif ayaklarla salon ve okuma köşeleri için tek kişilik berjer.",
+    "features": ["Yumuşak kadife kumaş, düğmeli kapitone dikiş", "Masif ahşap ayaklar", "Metal ayak uçları"],
+    "dimensions": "83 × 57 × 69 cm (G × D × Y)"
+  },
+  "variantLabel": "Kumaş",
+  "variants": [
+    { "name": "Mango kadife", "modelVariant": "Mango Velvet", "swatch": "#d38a3a", "priceDelta": 0 },
+    { "name": "Tavus kadife", "modelVariant": "Peacock Velvet", "swatch": "#1f6a73", "priceDelta": 500 }
+  ],
+  "model": {
+    "src": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/SheenChair.glb",
+    "alt": "Kadife kumaşlı, ahşap ayaklı tek kişilik berjer",
+    "cameraOrbit": "35deg 75deg auto"
+  },
+  "cta": { "label": "Satın al", "url": "" },
+  "credit": { "text": "Sheen Chair, Khronos Group (CC0)", "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair" }
+}

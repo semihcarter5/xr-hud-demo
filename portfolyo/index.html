@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AR Ürün Kartı · XR Stüdyo</title>
+<meta name="description" content="Ürünlerinizi müşterinin odasında, gerçek boyutunda gösterin. iPhone ve Android'de uygulama gerekmez.">
+<meta property="og:title" content="AR Ürün Kartı · XR Stüdyo">
+<meta property="og:description" content="Ürünlerinizi müşterinin odasında, gerçek boyutunda gösterin. Uygulama gerekmez.">
+<meta property="og:image" content="img/koltuk.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Yerleşim: tek sütun (en fazla 1080px); örnek kartlar 3'lü ızgara, telefonda tek sütun. Sıcak nötr zemin, ürünler öne çıksın. */
+:root {
+  --bg: #f4f2ef; --surface: #ffffff; --fg: #1b1d20; --muted: #63686f; --line: #e2ddd6;
+  --accent: #b5652e; --accent-ink: #ffffff; --soft: #f7e9df; --ok: #2f7a46;
+  --f-display: Montserrat, "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121416; --surface: #1b1e21; --fg: #eceae6; --muted: #a2a7ad; --line: #2c3035; --accent: #e08a4f; --accent-ink: #1b1209; --soft: #2d2118; --ok: #7fd39a; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-display); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); -webkit-tap-highlight-color: transparent; }
+.wrap { max-width: 1080px; margin: 0 auto; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
+p { margin: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: calc(16px + env(safe-area-inset-top, 0px)) 16px; }
+.logo { font-weight: 800; color: var(--fg); text-decoration: none; }
+header nav { display: flex; gap: 16px; font-size: 14px; flex-wrap: wrap; }
+header nav a { color: var(--muted); text-decoration: none; }
+.hero { padding-block: 40px 32px; display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+.hero h1 { font-size: clamp(32px, 5.6vw, 56px); font-weight: 800; letter-spacing: -.01em; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lede { font-size: 18px; color: var(--muted); max-width: 58ch; }
+.cta { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; justify-content: center; font: 700 15px var(--f-display); padding: 12px 20px; border-radius: 10px;
+  text-decoration: none; border: 1.5px solid var(--accent); cursor: pointer; touch-action: manipulation; background: transparent; color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.facts { display: flex; gap: 8px 22px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+.facts b { color: var(--ok); font-weight: 500; }
+section { padding-block: 40px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 20px; }
+section h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; }
+.intro { color: var(--muted); max-width: 64ch; }
+.examples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.ex { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; text-decoration: none; color: inherit; }
+.ex img { display: block; width: 100%; height: auto; aspect-ratio: 9 / 10; object-fit: cover; background: #ece8e2; }
+.ex .body { padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.ex .biz { font-size: 12.5px; color: var(--muted); }
+.ex h3 { font-size: 18px; font-weight: 800; }
+.ex .meta { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
+.ex .go { margin-top: auto; padding-top: 8px; font-weight: 700; color: var(--accent); }
+.ex:hover { border-color: var(--accent); }
+.note { font-size: 13px; color: var(--muted); }
+.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.steps li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; background: var(--soft); color: var(--accent); font-weight: 800; display: grid; place-items: center; }
+.steps h3 { font-size: 17px; }
+.steps p { color: var(--muted); font-size: 15px; }
+.incl { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 24px; padding: 0; margin: 0; list-style: none; }
+.incl li { display: flex; gap: 10px; align-items: flex-start; }
+.incl li::before { content: "✓"; color: var(--ok); font-weight: 800; }
+.packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.pack { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pack.feat { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.pack h3 { font-size: 18px; }
+.pack .price { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pack .price small { font-size: 14px; font-weight: 600; color: var(--muted); }
+.pack ul { margin: 0; padding-left: 18px; font-size: 14.5px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.founder { background: var(--soft); border-radius: 12px; padding: 14px 18px; font-weight: 600; }
+.code { position: relative; background: #1d2024; color: #e8e6e3; border-radius: 12px; padding: 16px 96px 16px 16px; font-family: var(--f-mono); font-size: 13px; overflow-x: auto; white-space: pre; }
+.code button { position: absolute; top: 10px; right: 10px; font: 600 12px var(--f-display); padding: 6px 10px; border-radius: 6px; border: 0; background: #3a3f46; color: #fff; cursor: pointer; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+details summary { font-weight: 700; cursor: pointer; }
+details p { margin-top: 8px; color: var(--muted); max-width: 70ch; }
+.contact { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+footer { border-top: 1px solid var(--line); padding-block: 24px calc(24px + env(safe-area-inset-bottom, 0px)); font-size: 13px; color: var(--muted); display: flex; gap: 8px 20px; flex-wrap: wrap; justify-content: space-between; }
+@media (max-width: 820px) { .examples, .steps, .packs { grid-template-columns: 1fr; } .ex img { aspect-ratio: 4 / 3; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="#">XR Stüdyo</a>
+    <nav aria-label="Sayfa içi"><a href="#ornekler">Örnekler</a><a href="#nasil">Nasıl çalışır</a><a href="#fiyat">Fiyatlar</a><a href="#iletisim">İletişim</a></nav>
+  </header>
+
+  <div class="hero">
+    <span class="eyebrow">AR Ürün Kartı</span>
+    <h1>Ürünleriniz müşterinin odasında, <em>gerçek boyutunda.</em></h1>
+    <p class="lede">Ürün fotoğraflarınızdan 3D model hazırlıyoruz. Müşteriniz tek dokunuşla ürünü telefonunda kendi evinde görür; iPhone ve Android'de uygulama indirmeden.</p>
+    <div class="cta">
+      <a class="btn primary" href="#ornekler">Örnekleri telefonunda dene</a>
+      <a class="btn" href="#fiyat">Fiyatlar</a>
+    </div>
+    <p class="facts"><span><b>iPhone + Android</b> AR</span><span><b>Uygulama yok</b>, link ve QR ile açılır</span><span><b>Gerçek ölçü</b> ile yerleşir</span></p>
+  </div>
+
+  <section id="ornekler" aria-labelledby="ornekler-h">
+    <span class="eyebrow">Örnek çalışmalar</span>
+    <h2 id="ornekler-h">Telefonunda aç, odana yerleştir</h2>
+    <p class="intro">Bilgisayardaysan karttaki QR kodu telefonunla okut. Telefondaysan karta dokunup "Kendi odanda gör"e bas.</p>
+    <div class="examples">
+      <a class="ex" href="../kart/?u=koltuk">
+        <img src="img/koltuk.jpg" alt="Turuncu kadife berjer 3D modeli" width="391" height="434">
+        <div class="body"><span class="biz">Örnek Mobilya · mobilya</span><h3>Kadife Berjer</h3><span class="meta">2 kumaş seçeneği · canlı fiyat</span><span class="go">Kartı aç →</span></div>
+      </a>
+      <a class="ex" href="../kart/?u=lambader">
+        <img src="img/lambader.jpg" alt="Kavisli pirinç lambader 3D modeli" width="391" height="434" loading="lazy">
+        <div class="body"><span class="biz">Örnek Aydınlatma · aydınlatma</span><h3>Pirinç Kavisli Lambader</h3><span class="meta">186 cm · gerçek boyutta AR</span><span class="go">Kartı aç →</span></div>
+      </a>
+      <a class="ex" href="../kart/?u=araba">
+        <img src="img/araba.jpg" alt="Kadife örtü üzerinde yeşil koleksiyon araba 3D modeli" width="391" height="434" loading="lazy">
+        <div class="body"><span class="biz">Örnek Oyuncak · koleksiyon</span><h3>Koleksiyon Oyuncak Araba</h3><span class="meta">7 cm · rafında gör</span><span class="go">Kartı aç →</span></div>
+      </a>
+    </div>
+    <p class="note">Örnekler hayali işletmeler için hazırlandı; 3D modeller açık lisanslı (Khronos Group, DGG). Gerçek işlerde modeller sizin ürün fotoğraflarınızdan hazırlanır.</p>
+  </section>
+
+  <section id="nasil" aria-labelledby="nasil-h">
+    <span class="eyebrow">Nasıl çalışır</span>
+    <h2 id="nasil-h">Üç adımda hazır</h2>
+    <ol class="steps">
+      <li><h3>Fotoğrafları gönderin</h3><p>Ürünün 4–8 farklı açıdan net fotoğrafı ve ölçüleri yeterli. Varsa mevcut 3D dosyası da olur.</p></li>
+      <li><h3>3D model ve kartı hazırlıyoruz</h3><p>Model gerçek ölçüsüne göre ayarlanır, iPhone ve Android'de test edilir. Onayınıza sunulur.</p></li>
+      <li><h3>Link, QR ve site kodu</h3><p>Ürün sayfanıza, sosyal medyaya, ambalaja ya da mağaza vitrinine koyun.</p></li>
+    </ol>
+    <ul class="incl">
+      <li>Markanızın rengi ve adıyla ürün sayfası</li>
+      <li>Renk/kumaş seçenekleri ve fiyat (varsa)</li>
+      <li>Baskıya hazır QR kod</li>
+      <li>Web sitenize tek satırla ekleme</li>
+      <li>"Satın al" ya da WhatsApp butonu</li>
+      <li>1 revizyon hakkı</li>
+    </ul>
+  </section>
+
+  <section id="fiyat" aria-labelledby="fiyat-h">
+    <span class="eyebrow">Fiyatlar · KDV hariç</span>
+    <h2 id="fiyat-h">Paketler</h2>
+    <div class="packs">
+      <div class="pack"><h3>AR Ürün Kartı</h3><div class="price">3.500 TL <small>/ ürün</small></div><ul><li>1 ürün</li><li>Link, QR, site kodu</li><li>1 revizyon</li></ul></div>
+      <div class="pack feat"><h3>AR Katalog</h3><div class="price">24.000 TL <small>/ 10 ürün</small></div><ul><li>Ürün başı 2.400 TL, ek ürün 2.000 TL</li><li>Markalı vitrin sayfası</li><li>İlk ay bakım ücretsiz</li></ul></div>
+      <div class="pack"><h3>3D Ürün Yapılandırıcı</h3><div class="price">45.000 TL'den</div><ul><li>Renk, kumaş, malzeme seçimi</li><li>Canlı fiyat, VR desteği</li><li>2 revizyon</li></ul></div>
+    </div>
+    <p class="founder">Kurucu müşteri: İlk 5 işletmeye %30 indirim (vaka çalışması olarak paylaşma izni karşılığında).</p>
+    <p class="note">Barındırma ve bakım: 750 TL/ay (link açık kalır, ayda bir küçük güncelleme, görüntülenme raporu).</p>
+  </section>
+
+  <section id="ekle" aria-labelledby="ekle-h">
+    <span class="eyebrow">Web sitenize ekleme</span>
+    <h2 id="ekle-h">Tek satır kod</h2>
+    <p class="intro">Ürün sayfanıza "Odanızda görün" butonu eklemek için aşağıdaki satırı yapıştırmanız yeterli (örnek). Buton, AR kartını tam ekran açar; iPhone ve Android'de AR buradan başlar.</p>
+    <div class="code" id="embed">&lt;a href="https://semihcarter5.github.io/xr-hud-demo/kart/?u=koltuk" target="_blank" rel="noopener" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#b5652e;color:#fff;font-weight:700;text-decoration:none"&gt;Odanızda görün (AR)&lt;/a&gt;<button type="button" id="copyEmbed">Kopyala</button></div>
+  </section>
+
+  <section id="sss" aria-labelledby="sss-h">
+    <span class="eyebrow">Sık sorulanlar</span>
+    <h2 id="sss-h">Merak edilenler</h2>
+    <details><summary>Müşterinin uygulama indirmesi gerekiyor mu?</summary><p>Hayır. iPhone'da Safari'nin içindeki AR görüntüleyici, Android'de Google'ın AR görüntüleyicisi açılır. Link ya da QR yeterli.</p></details>
+    <details><summary>Hangi telefonlarda çalışır?</summary><p>AR destekli çoğu güncel iPhone ve Android telefonda. AR desteklemeyen cihazlarda ürün yine 3D olarak döndürülüp incelenebilir.</p></details>
+    <details><summary>Ölçüler doğru mu?</summary><p>Model, verdiğiniz ölçülere göre ayarlanır ve AR'da gerçek boyutunda yerleşir. Teslimden önce bu ölçüleri birlikte kontrol ederiz.</p></details>
+    <details><summary>Her ürün için olur mu?</summary><p>Mobilya, aydınlatma, dekorasyon, tekstil ve oyuncak gibi mat yüzeyli ürünlerde en iyi sonucu verir. Çok parlak, ayna gibi ya da tamamen şeffaf ürünler için önce ücretsiz deneme yaparız.</p></details>
+    <details><summary>Ne kadar sürede teslim edilir?</summary><p>Tek ürün genellikle birkaç iş günü içinde hazır olur; süre ürün sayısına ve karmaşıklığına göre değişir ve teklifte yazılı olarak belirtilir.</p></details>
+  </section>
+
+  <section id="iletisim" aria-labelledby="iletisim-h">
+    <span class="eyebrow">İletişim</span>
+    <h2 id="iletisim-h">Ürününüzle ücretsiz bir demo isteyin</h2>
+    <div class="contact">
+      <p>Bir ürününüzün fotoğrafını gönderin; kendi ürününüzle hazırlanmış AR kartını ücretsiz gösterelim.</p>
+      <div id="contactLines"></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>XR Stüdyo · AR Ürün Kartı</span>
+    <span><a href="../tanitim/">XR Stüdyo platformu</a></span>
+  </footer>
+</div>
+
+<script>
+// İletişim bilgileri: doldurulunca sayfada görünür (boşsa "yakında" yazar)
+var CONTACT = { email: '', whatsapp: '', instagram: '' };
+
+var box = document.getElementById('contactLines');
+var lines = [];
+if (CONTACT.email) lines.push(['E-posta', CONTACT.email]);
+if (CONTACT.whatsapp) lines.push(['WhatsApp', CONTACT.whatsapp]);
+if (CONTACT.instagram) lines.push(['Instagram', CONTACT.instagram]);
+if (!lines.length) { var p = document.createElement('p'); p.className = 'note'; p.textContent = 'İletişim bilgileri çok yakında eklenecek.'; box.appendChild(p); }
+lines.forEach(function (l) { var p = document.createElement('p'); var b = document.createElement('strong'); b.textContent = l[0] + ': '; p.appendChild(b); p.appendChild(document.createTextNode(l[1])); box.appendChild(p); });
+
+document.getElementById('copyEmbed').onclick = function () {
+  var btn = this, code = document.getElementById('embed').firstChild.textContent;
+  var ok = function () { btn.textContent = 'Kopyalandı'; setTimeout(function () { btn.textContent = 'Kopyala'; }, 1600); };
+  if (navigator.clipboard) navigator.clipboard.writeText(code).then(ok, function () {});
+};
+</script>
+</body>
+</html>

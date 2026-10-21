@@ -1,0 +1,20 @@
+{
+  "example": true,
+  "brand": { "name": "Örnek Aydınlatma", "tagline": "Hayali bir aydınlatma mağazası (örnek çalışma)", "accent": "#a8842c" },
+  "product": {
+    "name": "Pirinç Kavisli Lambader",
+    "price": 8750,
+    "currency": "TRY",
+    "description": "Kavisli pirinç gövde ve cam çan abajur. Koltuğun üstüne uzanan sıcak bir okuma ışığı.",
+    "features": ["Fırçalanmış pirinç gövde", "El yapımı cam abajur", "Sıcak beyaz ışık"],
+    "dimensions": "113 × 72 × 186 cm (G × D × Y)"
+  },
+  "model": {
+    "src": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/LightsPunctualLamp.glb",
+    "alt": "Kavisli pirinç gövdeli, cam abajurlu lambader",
+    "cameraOrbit": "-20deg 80deg auto",
+    "exposure": 1.1
+  },
+  "cta": { "label": "Satın al", "url": "" },
+  "credit": { "text": "Lights Punctual Lamp, DGG (CC BY 4.0)", "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/LightsPunctualLamp" }
+}
