@@ -72,7 +72,9 @@ export async function setupVR({ THREE, renderer, scene, hudRig, panels, ui, env,
   // --- VR / AR butonları (cihaz destekliyorsa görünür) ---
   async function addButton(mode, label) {
     if (!navigator.xr) return;
-    const ok = await navigator.xr.isSessionSupported(mode).catch(() => false);
+    // Bazı telefonlarda (AR servisleri kontrol edilirken) cevap gecikebilir: demo açılışını bekletme
+    const timeout = new Promise(res => setTimeout(() => res(false), 3000));
+    const ok = await Promise.race([navigator.xr.isSessionSupported(mode).catch(() => false), timeout]);
     if (!ok) return;
     const btn = document.createElement('button');
     btn.textContent = label;

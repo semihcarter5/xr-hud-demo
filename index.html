@@ -17,6 +17,9 @@
   #toast { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); padding: 8px 16px; border-radius: 6px; background: rgba(3, 20, 30, .92); border: 1px solid #7dffb0; color: #d9ffe9; font-size: 14px; z-index: 3; }
   .lil-gui { --font-family: Montserrat, "Segoe UI", sans-serif; --width: 270px; }
   .lil-gui.autoPlace { top: 44px; max-height: calc(100% - 120px); }
+  #boot { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; white-space: pre-line; z-index: 5; pointer-events: none; }
+  #boot[hidden] { display: none; }
+  #boot.err { background: rgba(40, 6, 12, .94); color: #ffd6dc; pointer-events: auto; overflow-wrap: anywhere; }
 </style>
 <script type="importmap">{ "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -28,12 +31,29 @@
 <div id="hint"></div>
 <div id="ui"></div>
 <div id="toast" hidden></div>
+<div id="boot">Yükleniyor…</div>
+<script>
+// Telefonda sorun olursa sebebi ekranda görünsün (geliştirici konsolu olmadan)
+(function () {
+  var boot = document.getElementById('boot');
+  function show(msg) {
+    boot.hidden = false;
+    boot.className = 'err';
+    boot.textContent = msg + '\n\nSayfayı yenile. Düzelmezse Chrome ile aç ve bu yazının ekran görüntüsünü gönder.\n(Kapatmak için dokun)';
+    boot.onclick = function () { boot.hidden = true; };
+  }
+  addEventListener('error', function (e) { show('Hata: ' + (e.message || 'dosya yüklenemedi')); });
+  addEventListener('unhandledrejection', function (e) { show('Hata: ' + (e.reason && e.reason.message || e.reason)); });
+  setTimeout(function () { if (!window.__hud) show('Demo 15 saniyede açılamadı.\nTarayıcı: ' + navigator.userAgent); }, 15000);
+})();
+</script>
 <script type="module">
 import * as THREE from 'three';
-import { createEditor } from './editor.js';
-import { defaultSettings, mergeSettings, LAYOUT_BOUNDS } from './settings.js';
-import { setupInput } from './input.js';
-import { setupVR } from './vr.js';
+// ?v=: yeni sürüm yayınlanınca telefon eski dosyaları önbellekten karıştırmasın
+import { createEditor } from './editor.js?v=5';
+import { defaultSettings, mergeSettings, LAYOUT_BOUNDS } from './settings.js?v=5';
+import { setupInput } from './input.js?v=5';
+import { setupVR } from './vr.js?v=5';
 
 const settings = defaultSettings();
 const T = settings.theme;
@@ -469,6 +489,8 @@ window.__hud = {
   fire: () => fire(null),
   aim(y, p) { yaw = y; pitch = p; },
 };
+
+document.getElementById('boot').hidden = true;
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
