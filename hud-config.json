@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "hud": {
     "distance": 1.5
   },
@@ -11,10 +11,18 @@
     "opacity": 1,
     "drone": "#ff7a3d"
   },
-  "panels": {
-    "compass": { "position": [0, 0.34, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
-    "center": { "position": [0, -0.06, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
-    "energy": { "position": [-0.62, -0.06, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
-    "stats": { "position": [0.6, 0, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true }
+  "layouts": {
+    "landscape": {
+      "compass": { "position": [0, 0.34, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
+      "center": { "position": [0, -0.06, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
+      "energy": { "position": [-0.62, -0.06, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
+      "stats": { "position": [0.6, 0, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true }
+    },
+    "portrait": {
+      "compass": { "position": [0, 0.5, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
+      "center": { "position": [0, 0.05, 0], "rotation": [0, 0, 0], "scale": 1, "visible": true },
+      "energy": { "position": [-0.3, -0.48, 0], "rotation": [0, 0, 0], "scale": 0.6, "visible": true },
+      "stats": { "position": [0.2, -0.47, 0], "rotation": [0, 0, 0], "scale": 0.8, "visible": true }
+    }
   }
 }

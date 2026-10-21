@@ -36,6 +36,7 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
   // Panelin sahnedeki konumunu ayarlara yazar (gizmo ve VR'da elle taşıma ortak kullanır)
   function commit(o) {
     const p = settings.panels[o.name];
+    o.position.z = Math.min(o.position.z, settings.hud.distance - 0.6); // göze 60 cm'den fazla yaklaşmasın
     p.position = o.position.toArray().map(r3);
     p.rotation = [o.rotation.x, o.rotation.y, o.rotation.z].map(a => r1(THREE.MathUtils.radToDeg(a)));
     p.scale = r3(o.scale.x);
@@ -55,7 +56,7 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
   const fp = gui.addFolder('Seçili panel');
   fp.add(proxy, 'x', -1.5, 1.5, 0.005).name('X (m)').onChange(fromProxy);
   fp.add(proxy, 'y', -1, 1, 0.005).name('Y (m)').onChange(fromProxy);
-  fp.add(proxy, 'z', -1, 1, 0.005).name('Z derinlik (m)').onChange(fromProxy);
+  fp.add(proxy, 'z', -1, 0.9, 0.005).name('Z derinlik (m)').onChange(fromProxy);
   fp.add(proxy, 'rx', -90, 90, 1).name('Dönüş X (°)').onChange(fromProxy);
   fp.add(proxy, 'ry', -90, 90, 1).name('Dönüş Y (°)').onChange(fromProxy);
   fp.add(proxy, 'rz', -90, 90, 1).name('Dönüş Z (°)').onChange(fromProxy);
@@ -105,7 +106,23 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
     applySettings();
     syncProxy();
     gui.controllersRecursive().forEach(c => c.updateDisplay());
+    gui.title('HUD Düzenleyici · ' + (settings.orientation === 'portrait' ? 'Dikey' : 'Yatay'));
   }
+
+  // İki parmak (veya fare tekerleği): seçili paneli büyüt/küçült ve sağa sola yatır
+  let gesture = null;
+  function gestureStart() {
+    if (!editing) return;
+    if (!selected) select(panels.center);
+    gesture = { scale: selected.scale.x, rz: selected.rotation.z };
+  }
+  function gestureUpdate(scaleRatio, angleDelta) {
+    if (!gesture || !selected) return;
+    selected.scale.setScalar(THREE.MathUtils.clamp(gesture.scale * scaleRatio, 0.2, 4));
+    selected.rotation.z = gesture.rz - angleDelta; // ekranda saat yönü = sahnede eksi Z
+    commit(selected);
+  }
+  function gestureEnd() { gesture = null; }
 
   function applyAndSave() {
     applySettings();
@@ -207,7 +224,11 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
     editing = on;
     for (const m of Object.values(panels)) m.userData.outline.visible = on;
     if (on) { gui.show(); select(selected || panels.center); }
-    else { gui.hide(); tc.detach(); }
+    else {
+      gui.hide(); tc.detach();
+      clearTimeout(saveTimer);
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); toast('Düzen kaydedildi'); } catch { /* yok say */ }
+    }
     onToggle(on);
   }
 
@@ -246,7 +267,13 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
   return {
     setEditMode,
     commit,
+    reset,
+    refresh: refreshAll,
+    gestureStart,
+    gestureUpdate,
+    gestureEnd,
     isEditing: () => editing,
+    isPanelOpen: () => editing && !gui._closed,
     isOverGizmo: () => editing && (tc.dragging || tc.axis !== null),
     pick,
     handleKey,

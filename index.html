@@ -31,7 +31,8 @@
 <script type="module">
 import * as THREE from 'three';
 import { createEditor } from './editor.js';
-import { defaultSettings, mergeSettings } from './settings.js';
+import { defaultSettings, mergeSettings, LAYOUT_BOUNDS } from './settings.js';
+import { setupInput } from './input.js';
 import { setupVR } from './vr.js';
 
 const settings = defaultSettings();
@@ -257,6 +258,7 @@ function applySettings() {
     const p = settings.panels[name];
     mesh.position.fromArray(p.position);
     mesh.rotation.set(...p.rotation.map(THREE.MathUtils.degToRad));
+    mesh.position.z = Math.min(mesh.position.z, settings.hud.distance - 0.6); // göze 60 cm'den fazla yaklaşmasın
     mesh.scale.setScalar(p.scale);
     mesh.visible = p.visible;
     mesh.material.opacity = T.opacity;
@@ -308,50 +310,55 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2200);
 }
-const PLAY_HINT = 'Sürükle: etrafa bak · Tıkla veya Boşluk: ateş et · Kilitlenince ateş et · E: düzenle';
-const EDIT_HINT = 'DÜZENLEME · Panele tıkla: seç · W taşı · T döndür · R ölçekle · Sürükle: etrafa bak · E/Esc: çık';
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+const PLAY_HINT = TOUCH
+  ? 'Bir parmakla sürükle: bak · Diğer parmakla dokun: ateş et'
+  : 'Sürükle: etrafa bak · Tıkla veya Boşluk: ateş et · Kilitlenince ateş et · E: düzenle';
+const EDIT_HINT = TOUCH
+  ? 'DÜZENLEME · Dokun: panel seç · Oklarla taşı · İki parmak: büyüt/küçült ve yatır'
+  : 'DÜZENLEME · Panele tıkla: seç · W taşı · T döndür · R ölçekle · Tekerlek: boyut · E/Esc: çık';
 hint.textContent = PLAY_HINT;
 
 const ui = document.getElementById('ui');
 const editBtn = document.createElement('button');
 editBtn.textContent = 'Düzenle (E)';
 ui.appendChild(editBtn);
+// Sıfırla: yanlışlıkla basılmasın diye ikinci dokunuşta çalışır
+const resetBtn = document.createElement('button');
+resetBtn.textContent = 'Sıfırla';
+resetBtn.hidden = true;
+ui.appendChild(resetBtn);
+let resetArmed = 0;
 
 const editor = createEditor({
   THREE, scene, camera, renderer, panels, settings, applySettings, mergeSettings, defaultSettings, toast,
   onToggle(on) {
     hint.textContent = on ? EDIT_HINT : PLAY_HINT;
-    editBtn.textContent = on ? 'Düzenlemeyi Kapat (E)' : 'Düzenle (E)';
+    editBtn.textContent = on ? 'Kaydet ve Kapat' : 'Düzenle (E)';
+    resetBtn.hidden = !on;
   },
 });
 editBtn.onclick = () => editor.setEditMode(!editor.isEditing());
-
-// --- Masaüstü / dokunmatik bakış kontrolü ---
-let yaw = 0, pitch = 0, drag = null;
-renderer.domElement.addEventListener('pointerdown', e => {
-  if (editor.isOverGizmo()) { drag = null; return; }
-  drag = { x: e.clientX, y: e.clientY, moved: 0 };
-  renderer.domElement.setPointerCapture(e.pointerId);
-});
-renderer.domElement.addEventListener('pointermove', e => {
-  if (!drag) return;
-  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-  drag.moved += Math.abs(dx) + Math.abs(dy);
-  drag.x = e.clientX; drag.y = e.clientY;
-  yaw -= dx * 0.004;
-  pitch = THREE.MathUtils.clamp(pitch - dy * 0.004, -1.2, 1.2);
-});
-renderer.domElement.addEventListener('pointerup', e => {
-  if (drag && drag.moved < 6) {
-    if (editor.isEditing()) editor.pick(e);
-    else fire(null);
+resetBtn.onclick = () => {
+  if (resetArmed) {
+    clearTimeout(resetArmed); resetArmed = 0;
+    resetBtn.textContent = 'Sıfırla';
+    editor.reset();
+    return;
   }
-  drag = null;
-});
-addEventListener('keydown', e => {
-  if (e.target.closest && e.target.closest('input, textarea, .lil-gui')) return;
-  if (editor.handleKey(e)) return;
-  if (e.code === 'Space' && !editor.isEditing()) { e.preventDefault(); fire(null); }
+  resetBtn.textContent = 'Emin misin? Tekrar dokun';
+  resetArmed = setTimeout(() => { resetArmed = 0; resetBtn.textContent = 'Sıfırla'; }, 3000);
+};
+
+// --- Fare / dokunmatik / klavye (input.js) ---
+let yaw = 0, pitch = 0;
+setupInput({
+  el: renderer.domElement, editor,
+  fire: () => fire(null),
+  onLook(dx, dy) {
+    yaw -= dx * 0.004;
+    pitch = THREE.MathUtils.clamp(pitch - dy * 0.004, -1.2, 1.2);
+  },
 });
 
 // --- VR: oturum butonları, kumanda/el ile ateş ve panelleri tutup taşıma (vr.js) ---
@@ -413,6 +420,14 @@ renderer.setAnimationLoop(() => {
   if (flashT > 0) flashT -= dt;
   if (beamT > 0) { beamT -= dt * 4; beam.material.opacity = Math.max(0, beamT); beam.visible = beamT > 0; }
 
+  // Ekran yönü değişince (telefonu çevirince) o yönün panel düzenine geç; VR her zaman yatay düzen
+  const orientation = xr || camera.aspect >= 1 ? 'landscape' : 'portrait';
+  if (orientation !== settings.orientation) {
+    settings.orientation = orientation;
+    applySettings();
+    editor.refresh();
+  }
+
   // HUD: masaüstünde sabit ve pencereye sığar, VR'da başı yumuşak takip eder
   const dist = settings.hud.distance;
   const target = tmp.copy(camDir).multiplyScalar(dist).add(camPos);
@@ -422,9 +437,10 @@ renderer.setAnimationLoop(() => {
   if (xr) { hudRig.scale.setScalar(1); vr.update(); }
   else {
     const visH = 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), visW = visH * camera.aspect;
-    const makeRoom = editor.isEditing() && innerWidth >= 700; // geniş ekranda sağdaki ayar paneline yer aç
+    const makeRoom = editor.isPanelOpen() && innerWidth >= 700; // geniş ekranda açık ayar paneline yer aç
     const fit = makeRoom ? 0.62 : 0.94;
-    hudRig.scale.setScalar(Math.min(fit * visW / 1.6, fit * 0.85 * visH / 0.8));
+    const b = LAYOUT_BOUNDS[orientation];
+    hudRig.scale.setScalar(Math.min(fit * visW / b.w, fit * 0.85 * visH / b.h));
     if (makeRoom) hudRig.position.addScaledVector(_v1.set(-1, 0, 0).applyQuaternion(camQ), visW * 0.12);
   }
 
