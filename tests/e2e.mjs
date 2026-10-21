@@ -175,12 +175,16 @@ if (arButton) {
 // 5) AR etiket demosu: yedek odada tıklayarak etiket koyma, geri al, AR'da yerleştirme
 await viewport(1280, 720, false);
 await open('ar-etiket/');
-const tablePx = await run(`await frames(3); const v = new h.camera.position.constructor(0.1, 0.78, -0.45).project(h.camera);
+// Modeller yüklensin, örnek etiketler temizlensin, sehpanın üstüne tıklansın
+const tablePx = await run(`for (let i = 0; i < 80 && !h.ready; i++) await new Promise(r => setTimeout(r, 250));
+  await frames(3); document.getElementById('clear').click(); await frames(2);
+  const v = h.tableTop.clone().project(h.camera);
   return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];`);
 for (const type of ['mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', { type, x: tablePx[0], y: tablePx[1], button: 'left', clickCount: 1 });
 await sleep(600);
 const placed = await run(`await frames(3); const a = h.labels[0]; return { count: h.labels.length, y: a && +a.position.y.toFixed(2), type: a?.userData.type };`);
-check('AR etiket: masaya tıklayınca etiket kondu', placed.count === 1 && Math.abs(placed.y - 0.78) < 0.05, placed);
+const tableY = await run('return h.tableTop.y');
+check('AR etiket: sehpaya tıklayınca etiket kondu', placed.count === 1 && Math.abs(placed.y - tableY) < 0.05, placed);
 await run(`document.querySelector('[data-type="price"]').click(); document.getElementById('labelText').value = 'Test fiyatı 99 TL'; h.addLabelAt(0, 0, -1); await frames(2);`);
 await shot('6-ar-etiket.png');
 const typed = await run(`const a = h.labels[1]; return { count: h.labels.length, type: a.userData.type, text: a.userData.text };`);

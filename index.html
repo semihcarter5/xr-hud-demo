@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=11">
 <!-- Eski tarayıcılarda (import map desteklemeyen Safari / Mi Browser vb.) eksik özelliği tamamlar; destekleyenlerde devre dışı kalır -->
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">{ "imports": {
@@ -22,232 +22,66 @@
 <div id="toast" hidden></div>
 <nav id="navlink">Diğer demolar: <a href="ar-etiket/">AR etiket</a> · <a href="el-menu/">El menüsü</a> · <a href="tanitim/">Tanıtım</a></nav>
 <div id="boot">Yükleniyor…</div>
-<script src="boot.js?v=9"></script>
+<script src="boot.js?v=11"></script>
 <script type="module">
 import * as THREE from 'three';
 // ?v=: yeni sürüm yayınlanınca telefon eski dosyaları önbellekten karıştırmasın
-import { createEditor } from './editor.js?v=9';
-import { defaultSettings, mergeSettings, layoutBounds, CONTEXT_NAMES } from './settings.js?v=9';
-import { setupInput } from './input.js?v=9';
-import { setupVR } from './vr.js?v=9';
-import { setupCompat } from './compat.js?v=9';
+import { createEditor } from './editor.js?v=11';
+import { defaultSettings, mergeSettings, layoutBounds, CONTEXT_NAMES } from './settings.js?v=11';
+import { setupInput } from './input.js?v=11';
+import { setupVR } from './vr.js?v=11';
+import { setupCompat } from './compat.js?v=11';
+import { createSpace } from './space.js?v=11';
+import { createPanels } from './hud-panels.js?v=11';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const settings = defaultSettings();
 const T = settings.theme;
-const AMBER = '#ffb347';
 
-// --- Renderer, sahne, kamera ---
+// --- Renderer: film tonu; HUD panelleri ton eşlemesiz kalır (keskin renk) ---
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
 renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const BG = new THREE.Color(0x03070c);
-const FOG = new THREE.Fog(0x03070c, 20, 70);
-scene.background = BG;
-scene.fog = FOG;
-
-const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 200);
+const BG = null, FOG = null; // gökyüzü küre olarak çizilir (space.js); AR'da kamera görüntüsü arkada kalır
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 400);
 camera.position.set(0, 1.6, 0);
 scene.add(camera);
-scene.add(new THREE.HemisphereLight(0x88ccff, 0x0a1a22, 1.2));
 
-// --- Ortam (AR modunda gizlenir) ---
-const env = new THREE.Group();
-scene.add(env);
-{
-  const n = 1500, pos = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    const r = 80 + Math.random() * 40, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
-    pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
-    pos[i * 3 + 1] = Math.abs(r * Math.cos(ph)) * 0.9 + 2;
-    pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  env.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x9fdcff, size: 0.35, fog: false })));
-}
-env.add(new THREE.GridHelper(120, 60, 0x1b6f80, 0x0c3440));
+// --- Uzay sahnesi, dronlar, lazer, patlama (space.js) ---
+const space = createSpace({ THREE, scene, renderer });
+const env = space.env, drones = space.drones;
 
-// --- Hedef dronlar ---
-const drones = [];
-const droneGeo = new THREE.IcosahedronGeometry(0.45, 0);
-function spawn(d) {
-  const a = Math.random() * Math.PI * 2, r = 8 + Math.random() * 14;
-  d.userData.center = new THREE.Vector3(Math.cos(a) * r, 1.5 + Math.random() * 5, Math.sin(a) * r);
-  d.userData.phase = Math.random() * 10;
-  d.userData.speed = 0.3 + Math.random() * 0.5;
-  d.userData.alive = true;
-  d.userData.dieT = 0;
-  d.scale.setScalar(1);
-}
-for (let i = 0; i < 7; i++) {
-  const m = new THREE.Mesh(droneGeo, new THREE.MeshStandardMaterial({ emissiveIntensity: 0.6, flatShading: true }));
-  m.add(new THREE.LineSegments(new THREE.EdgesGeometry(droneGeo), new THREE.LineBasicMaterial({ color: 0xffd2b0 })));
-  spawn(m);
-  scene.add(m);
-  drones.push(m);
-}
+// --- Oyun durumu (HUD bunu okur) ---
+let energy = 100, score = 0, lockT = 0, candidate = null, locked = null;
+let flash = '', flashT = 0;
+const game = {
+  get energy() { return energy; }, get score() { return score; }, get lockT() { return lockT; },
+  get locked() { return !!locked; }, get candidate() { return !!candidate; },
+  get flash() { return flash; }, get flashT() { return flashT; },
+  get alive() { return drones.filter(d => d.userData.alive).length; },
+};
 
-// --- Hedef üzerindeki kilit çerçevesi ---
-const reticle = new THREE.Group();
-const reticleMat = new THREE.LineBasicMaterial({ depthTest: false, transparent: true });
-{
-  const s = 0.8, c = 0.3, pts = [];
-  for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-    pts.push(x * s, y * s, 0, x * (s - c), y * s, 0);
-    pts.push(x * s, y * s, 0, x * s, y * (s - c), 0);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  const lines = new THREE.LineSegments(g, reticleMat);
-  lines.renderOrder = 10;
-  reticle.add(lines);
-}
-reticle.visible = false;
-scene.add(reticle);
-
-// --- Lazer ışını ---
-const beamGeo = new THREE.BufferGeometry();
-beamGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
-const beam = new THREE.Line(beamGeo, new THREE.LineBasicMaterial({ color: 0x7dffb0, transparent: true }));
-beam.frustumCulled = false;
-beam.visible = false;
-scene.add(beam);
-let beamT = 0;
-
-// --- HUD: her panel ayrı canvas + düzlem; hudRig başı takip eder ---
-const PX_PER_M = 640;
+// --- HUD: panelleri hudRig taşır; başı takip eder (hud-panels.js) ---
 const hudRig = new THREE.Group();
 scene.add(hudRig);
-const panels = {};
-function makePanel(name, wPx, hPx, draw) {
-  const canvas = document.createElement('canvas');
-  canvas.width = wPx; canvas.height = hPx;
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const geo = new THREE.PlaneGeometry(wPx / PX_PER_M, hPx / PX_PER_M);
-  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, fog: false }));
-  mesh.name = name;
-  mesh.renderOrder = 20;
-  const outline = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ transparent: true, depthTest: false }));
-  outline.renderOrder = 21;
-  outline.visible = false;
-  mesh.add(outline);
-  mesh.userData = { ctx: canvas.getContext('2d'), tex, draw, outline };
-  hudRig.add(mesh);
-  panels[name] = mesh;
-}
+const hud = createPanels({ THREE, hudRig, theme: T, game });
+const panels = hud.panels;
 
-function prep(c) {
-  c.clearRect(0, 0, c.canvas.width, c.canvas.height);
-  c.lineWidth = 2;
-  c.shadowBlur = T.glow;
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.globalAlpha = 1;
-  ink(c, T.main);
-}
-function ink(c, color) { c.strokeStyle = color; c.fillStyle = color; c.shadowColor = color; }
-
-const COMPASS = { 0: 'K', 90: 'D', 180: 'G', 270: 'B' };
-makePanel('compass', 512, 128, (c, s) => {
-  const cx = 256, cy = 48, span = 90, ppd = 400 / span;
-  c.save();
-  c.beginPath(); c.rect(cx - 200, cy - 34, 400, 60); c.clip();
-  c.font = '600 22px Montserrat, sans-serif';
-  for (let d = Math.floor((s.heading - span / 2) / 5) * 5; d <= s.heading + span / 2; d += 5) {
-    const x = cx + (d - s.heading) * ppd, dd = ((d % 360) + 360) % 360, major = dd % 30 === 0;
-    c.beginPath(); c.moveTo(x, cy + 20); c.lineTo(x, cy + (major ? 2 : 12)); c.stroke();
-    if (major) c.fillText(COMPASS[dd] ?? String(dd).padStart(3, '0'), x, cy - 14);
-  }
-  c.restore();
-  c.beginPath(); c.moveTo(cx, cy + 24); c.lineTo(cx - 8, cy + 36); c.lineTo(cx + 8, cy + 36); c.closePath(); c.fill();
-  c.font = '600 20px Montserrat, sans-serif';
-  c.fillText(String(Math.round(s.heading) % 360).padStart(3, '0') + '°', cx, cy + 56);
-});
-
-makePanel('center', 512, 384, (c, s) => {
-  const W = 512, H = 384, mx = W / 2, my = H / 2;
-  for (const [x, y, sx, sy] of [[10, 10, 1, 1], [W - 10, 10, -1, 1], [10, H - 10, 1, -1], [W - 10, H - 10, -1, -1]]) {
-    c.beginPath(); c.moveTo(x + sx * 40, y); c.lineTo(x, y); c.lineTo(x, y + sy * 28); c.stroke();
-  }
-  // Yunuslama merdiveni
-  c.save();
-  c.beginPath(); c.rect(mx - 230, my - 150, 460, 300); c.clip();
-  c.font = '600 15px Montserrat, sans-serif';
-  c.globalAlpha = 0.7;
-  for (let p = -60; p <= 60; p += 10) {
-    const y = my + (s.pitchDeg - p) * 6;
-    if (y < my - 150 || y > my + 150) continue;
-    const half = p === 0 ? 190 : 140;
-    c.setLineDash(p < 0 ? [8, 6] : []);
-    c.beginPath(); c.moveTo(mx - half, y); c.lineTo(mx - 60, y); c.moveTo(mx + 60, y); c.lineTo(mx + half, y); c.stroke();
-    if (p !== 0) { c.fillText(String(p), mx - half - 18, y); c.fillText(String(p), mx + half + 18, y); }
-  }
-  c.setLineDash([]);
-  c.restore();
-  // Nişangâh
-  c.beginPath(); c.arc(mx, my, 18, 0, Math.PI * 2); c.stroke();
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    c.beginPath(); c.moveTo(mx + dx * 26, my + dy * 26); c.lineTo(mx + dx * 40, my + dy * 40); c.stroke();
-  }
-  // Kilit durumu
-  c.font = '600 22px Montserrat, sans-serif';
-  if (locked) {
-    if (Math.floor(s.t * 4) % 2 === 0) { ink(c, T.lock); c.fillText('HEDEF KİLİTLENDİ', mx, my + 70); }
-  } else if (candidate) {
-    c.fillText('KİLİTLENİYOR ' + Math.round(lockT * 100) + '%', mx, my + 70);
-  } else {
-    c.globalAlpha = 0.6; c.fillText('TARANIYOR', mx, my + 70); c.globalAlpha = 1;
-  }
-  // Anlık mesaj
-  if (flashT > 0) {
-    c.globalAlpha = Math.min(1, flashT * 2);
-    c.font = '700 24px Montserrat, sans-serif';
-    ink(c, flash.startsWith('ENERJİ') ? AMBER : T.energy);
-    c.fillText(flash, mx, H - 36);
-  }
-});
-
-makePanel('energy', 128, 384, c => {
-  const ex = 44, ey0 = 48, eh = 280, segs = 20, sh = eh / segs;
-  const col = energy > 40 ? T.energy : energy > 20 ? AMBER : T.lock;
-  c.font = '600 17px Montserrat, sans-serif';
-  c.fillText('ENERJİ', 64, 22);
-  for (let i = 0; i < segs; i++) {
-    const filled = (i + 1) / segs <= energy / 100 + 1e-6;
-    c.globalAlpha = filled ? 1 : 0.2;
-    c.fillStyle = filled ? col : T.main;
-    c.fillRect(ex, ey0 + eh - (i + 1) * sh + 2, 40, sh - 4);
-  }
-  c.globalAlpha = 1;
-  ink(c, col);
-  c.fillText(Math.round(energy) + '%', 64, ey0 + eh + 26);
-});
-
-makePanel('stats', 320, 256, (c, s) => {
-  const rx = 300;
-  c.textAlign = 'right';
-  c.font = '600 18px Montserrat, sans-serif';
-  c.fillText('SKOR', rx, 30);
-  c.font = '700 30px Montserrat, sans-serif';
-  c.fillText(String(score).padStart(6, '0'), rx, 64);
-  c.font = '600 18px Montserrat, sans-serif';
-  const rows = [
-    ['HEDEF', String(drones.filter(d => d.userData.alive).length)],
-    ['İRTİFA', s.altitude.toFixed(1) + ' m'],
-    ['YUNUS', (s.pitchDeg >= 0 ? '+' : '') + s.pitchDeg.toFixed(0) + '°'],
-    ['SÜRE', Math.floor(s.t) + ' s'],
-  ];
-  rows.forEach(([label, value], i) => {
-    const y = 120 + i * 30;
-    c.textAlign = 'left'; c.globalAlpha = 0.7; c.fillText(label, 130, y);
-    c.textAlign = 'right'; c.globalAlpha = 1; c.fillText(value, rx, y);
-  });
-});
+// --- Parlama (bloom): ekranda; VR'da ve zayıf cihazda kapalı ---
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.55, 0.95));
+composer.addPass(new OutputPass());
 
 // Ayarları sahneye uygular (yükleme, düzenleme, sıfırlama sonrası)
 function applySettings() {
@@ -260,16 +94,10 @@ function applySettings() {
     mesh.visible = p.visible;
     mesh.material.opacity = T.opacity * (settings.context === 'ar' ? 0.8 : 1); // AR: gerçek dünya görünsün
   }
-  for (const d of drones) {
-    d.material.color.set(T.drone);
-    d.material.emissive.set(T.drone).multiplyScalar(0.7);
-  }
+  space.setColors(T.main, T.drone);
 }
 applySettings();
 
-// --- Oyun durumu ---
-let energy = 100, score = 0, lockT = 0, candidate = null, locked = null;
-let flash = '', flashT = 0;
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion();
 
 function fire(controller) {
@@ -281,20 +109,14 @@ function fire(controller) {
   let to;
   if (locked) {
     to = locked.position.clone();
-    locked.userData.alive = false;
-    locked.userData.dieT = 0;
+    space.kill(locked);
     score += 100;
     flash = 'HEDEF İMHA EDİLDİ'; flashT = 1;
     locked = null; candidate = null; lockT = 0;
   } else {
     to = camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(40).add(camera.getWorldPosition(new THREE.Vector3()));
   }
-  const p = beamGeo.attributes.position;
-  p.setXYZ(0, from.x, from.y, from.z);
-  p.setXYZ(1, to.x, to.y, to.z);
-  p.needsUpdate = true;
-  beamT = 1;
-  beam.visible = true;
+  space.fireBeam(from.clone(), to);
 }
 
 // --- Düzenleme modu (editor.js) ---
@@ -395,39 +217,22 @@ renderer.setAnimationLoop(() => {
   camera.getWorldQuaternion(camQ);
 
   // Dron hareketi ve bakış yönüne en yakın hedef
+  space.update(dt, t);
   let best = null, bestAng = 0.14;
   for (const d of drones) {
-    const u = d.userData;
-    if (u.alive) {
-      const ph = t * u.speed + u.phase;
-      d.position.set(u.center.x + Math.cos(ph) * 2.5, u.center.y + Math.sin(ph * 1.7) * 0.8, u.center.z + Math.sin(ph) * 2.5);
-      d.rotation.x += dt; d.rotation.y += dt * 1.3;
-      const ang = tmp.subVectors(d.position, camPos).normalize().angleTo(camDir);
-      if (ang < bestAng) { bestAng = ang; best = d; }
-    } else {
-      u.dieT += dt;
-      d.scale.setScalar(Math.max(0.001, 1 - u.dieT * 3));
-      d.rotation.y += dt * 10;
-      if (u.dieT > 1.5) spawn(d);
-    }
+    if (!d.userData.alive) continue;
+    const ang = tmp.subVectors(d.position, camPos).normalize().angleTo(camDir);
+    if (ang < bestAng) { bestAng = ang; best = d; }
   }
   if (editor.isEditing()) best = null; // düzenlerken kilitlenme olmasın
   if (best && best === candidate) lockT = Math.min(1, lockT + dt / 0.7);
   else { candidate = best; lockT = 0; }
   locked = candidate && lockT >= 1 ? candidate : null;
 
-  if (candidate) {
-    reticle.visible = true;
-    reticle.position.copy(candidate.position);
-    reticle.quaternion.copy(camQ);
-    reticle.rotateZ((1 - lockT) * t * 3);
-    reticle.scale.setScalar(1.6 - 0.8 * lockT);
-    reticleMat.color.set(locked ? T.lock : T.main);
-  } else reticle.visible = false;
+  space.updateReticle(candidate, lockT, !!locked, camQ, t, locked ? T.lock : T.main);
 
   energy = Math.min(100, energy + dt * 8);
   if (flashT > 0) flashT -= dt;
-  if (beamT > 0) { beamT -= dt * 4; beam.material.opacity = Math.max(0, beamT); beam.visible = beamT > 0; }
 
   // Ortamı algıla (masaüstü, telefon yatay/dikey, VR, AR) ve otomatik düzeni ona göre hesapla
   const ctx = xr ? (vr.mode() === 'immersive-ar' ? 'ar' : 'vr')
@@ -465,15 +270,10 @@ renderer.setAnimationLoop(() => {
       altitude: camPos.y,
       t,
     };
-    for (const mesh of Object.values(panels)) {
-      if (!mesh.visible) continue;
-      const { ctx, tex, draw } = mesh.userData;
-      prep(ctx);
-      draw(ctx, s);
-      tex.needsUpdate = true;
-    }
+    hud.draw(s);
   }
-  renderer.render(scene, camera);
+  if (xr || compat.quality.drops > 0) renderer.render(scene, camera);
+  else composer.render();
 });
 
 // --- Otomatik test kancası (AI ajanları ve tarayıcı testleri için) ---
@@ -490,6 +290,7 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
 });
 </script>
 </body>

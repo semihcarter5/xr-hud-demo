@@ -6,21 +6,29 @@
 <title>AR Etiket Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="../style.css?v=9">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../style.css?v=11">
 <style>
   #types { display: flex; gap: 6px; }
   #ui button.on { background: #39e6ff; color: #03141e; }
   #labelText { font: 500 14px Montserrat, "Segoe UI", sans-serif; padding: 10px 12px; width: min(220px, 60vw); border-radius: 6px;
     border: 1px solid #39e6ff; background: rgba(3, 20, 30, .85); color: #e4fbff; -webkit-user-select: text; user-select: text; }
+  #credit { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(64px + env(safe-area-inset-top, 0px)); font-size: 11px; opacity: .45; z-index: 2; text-align: right; }
+  #credit a { color: inherit; }
+  @media (max-width: 700px) { #credit { top: calc(86px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); right: auto; text-align: left; } }
 </style>
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
-<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }</script>
 </head>
 <body>
 <div id="overlay">
   <div id="hint"></div>
   <nav id="navlink"><a href="../">Kokpit HUD</a> · <a href="../el-menu/">El menüsü</a> · <a href="../tanitim/">Tanıtım</a></nav>
+  <div id="credit">Modeller: <a href="https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair">Sheen Chair</a> (CC0, Khronos) ·
+    <a href="https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/LightsPunctualLamp">Lamba</a> (CC BY 4.0, DGG)</div>
   <div id="ui">
     <div id="types"></div>
     <input id="labelText" maxlength="40" placeholder="Etiket yazısı">
@@ -30,250 +38,7 @@
   <div id="toast" hidden></div>
 </div>
 <div id="boot">Yükleniyor…</div>
-<script src="../boot.js?v=9"></script>
-<script type="module">
-import * as THREE from 'three';
-import { setupCompat } from '../compat.js?v=9';
-
-// ?emulate: Meta IWER emülatörü (gözlük/telefon olmadan AR testi)
-if (new URLSearchParams(location.search).has('emulate')) {
-  const { XRDevice, metaQuest3 } = await import('https://cdn.jsdelivr.net/npm/iwer@2.4.0/build/iwer.module.js');
-  window.__xrDevice = new XRDevice(metaQuest3);
-  window.__xrDevice.installRuntime({ forceInstall: true });
-}
-
-// --- Etiket türleri: renk, başlık ve örnek yazı ---
-const TYPES = {
-  info: { name: 'Bilgi', color: '#39e6ff', title: 'BİLGİ', sample: 'Kahve makinesi · 15 bar' },
-  price: { name: 'Fiyat', color: '#7dffb0', title: 'FİYAT', sample: '2.499 TL · Stokta' },
-  warn: { name: 'Uyarı', color: '#ffb347', title: 'DİKKAT', sample: 'Sıcak yüzey' },
-};
-let currentType = 'info';
-const TOUCH = matchMedia('(pointer: coarse)').matches;
-const MAX_LABELS = 30;
-
-const hint = document.getElementById('hint');
-const toastEl = document.getElementById('toast');
-let toastTimer = 0;
-function toast(msg) {
-  toastEl.textContent = msg; toastEl.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2200);
-}
-const textInput = document.getElementById('labelText');
-
-// --- Renderer, sahne ---
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.xr.enabled = true;
-document.body.prepend(renderer.domElement);
-const scene = new THREE.Scene();
-const BG = new THREE.Color(0x0a1016);
-scene.background = BG;
-const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.02, 100);
-camera.position.set(0, 1.5, 1.6);
-scene.add(new THREE.HemisphereLight(0xdff6ff, 0x203040, 1.6));
-const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-sun.position.set(2, 4, 3);
-scene.add(sun);
-
-// --- Yedek oda: AR olmayan cihazlarda etiketler bu odaya yerleşir ---
-const room = new THREE.Group();
-scene.add(room);
-const surfaces = [];
-{
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshStandardMaterial({ color: 0x1b2833, roughness: 0.9 }));
-  floor.rotation.x = -Math.PI / 2;
-  room.add(floor); surfaces.push(floor);
-  room.add(new THREE.GridHelper(8, 16, 0x2f5566, 0x22404d));
-  const tableMat = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 0.7 });
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.8), tableMat);
-  top.position.set(0, 0.75, -0.6);
-  room.add(top); surfaces.push(top);
-  for (const [x, z] of [[-0.65, -0.95], [0.65, -0.95], [-0.65, -0.25], [0.65, -0.25]]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.75, 0.05), tableMat);
-    leg.position.set(x, 0.375, z); room.add(leg);
-  }
-  // Masadaki örnek ürünler: etiketlenecek şeyler
-  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.1, 24), new THREE.MeshStandardMaterial({ color: 0xf2efe8 }));
-  cup.position.set(-0.35, 0.825, -0.55); room.add(cup); surfaces.push(cup);
-  const box = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.18), new THREE.MeshStandardMaterial({ color: 0x30343a, metalness: 0.4, roughness: 0.4 }));
-  box.position.set(0.25, 0.925, -0.6); room.add(box); surfaces.push(box);
-}
-
-// --- Nişan halkası: etiketin yerleşeceği nokta ---
-const reticle = new THREE.Mesh(new THREE.RingGeometry(0.035, 0.05, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x39e6ff }));
-reticle.matrixAutoUpdate = false;
-reticle.visible = false;
-scene.add(reticle);
-
-// --- Etiket kartı: yüzeyde nokta + dikey çizgi + kullanıcıya dönen kart ---
-const labels = [];
-function cardTexture(type, text) {
-  const t = TYPES[type], c = document.createElement('canvas');
-  c.width = 512; c.height = 200;
-  const g = c.getContext('2d');
-  g.fillStyle = 'rgba(6, 18, 26, 0.88)';
-  g.beginPath();
-  if (g.roundRect) g.roundRect(4, 4, 504, 192, 22); else g.rect(4, 4, 504, 192); // eski tarayıcılarda köşesiz
-  g.fill();
-  g.strokeStyle = t.color; g.lineWidth = 4; g.stroke();
-  g.fillStyle = t.color; g.fillRect(4, 30, 10, 140);
-  g.font = '700 30px Montserrat, sans-serif'; g.fillText(t.title, 40, 70);
-  g.fillStyle = '#e8fbff'; g.font = '600 34px Montserrat, sans-serif';
-  let s = text;
-  while (g.measureText(s).width > 440 && s.length > 1) s = s.slice(0, -2) + '…';
-  g.fillText(s, 40, 140);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-function addLabel(matrix) {
-  if (labels.length >= MAX_LABELS) { toast(`En fazla ${MAX_LABELS} etiket`); return; }
-  const text = textInput.value.trim() || TYPES[currentType].sample;
-  const color = TYPES[currentType].color;
-  const anchor = new THREE.Group();
-  matrix.decompose(anchor.position, anchor.quaternion, anchor.scale);
-  anchor.quaternion.identity(); anchor.scale.set(1, 1, 1);
-  anchor.add(new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 12), new THREE.MeshBasicMaterial({ color })));
-  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0.18, 0)]), new THREE.LineBasicMaterial({ color }));
-  anchor.add(line);
-  const card = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.125), new THREE.MeshBasicMaterial({ map: cardTexture(currentType, text), transparent: true, side: THREE.DoubleSide }));
-  card.position.y = 0.25;
-  anchor.add(card);
-  anchor.userData = { card, type: currentType, text, born: clock.elapsedTime };
-  scene.add(anchor);
-  labels.push(anchor);
-  toast(`${TYPES[currentType].name} etiketi eklendi`);
-}
-function removeLabel(a) {
-  scene.remove(a);
-  a.traverse(o => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); });
-}
-
-// --- Arayüz: tür seçimi, geri al, temizle ---
-const typesEl = document.getElementById('types');
-for (const [key, t] of Object.entries(TYPES)) {
-  const b = document.createElement('button');
-  b.textContent = t.name; b.dataset.type = key;
-  b.onclick = () => { currentType = key; textInput.placeholder = t.sample; for (const x of typesEl.children) x.classList.toggle('on', x.dataset.type === key); };
-  typesEl.appendChild(b);
-}
-typesEl.children[0].click();
-document.getElementById('undo').onclick = () => { const a = labels.pop(); if (a) { removeLabel(a); toast('Son etiket silindi'); } };
-document.getElementById('clear').onclick = () => { while (labels.length) removeLabel(labels.pop()); toast('Tüm etiketler silindi'); };
-const ui = document.getElementById('ui');
-// AR'da arayüze dokunmak etiket yerleştirmesin
-document.getElementById('overlay').addEventListener('beforexrselect', e => e.preventDefault());
-
-// --- Yedek modda bakma (sürükle) ve dokunarak yerleştirme ---
-const compat = setupCompat({ THREE, renderer, ui, toast, touch: TOUCH });
-let yaw = 0, pitch = -0.45, drag = null;
-const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), m4 = new THREE.Matrix4();
-const canvas = renderer.domElement;
-canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0 }; });
-canvas.addEventListener('pointermove', e => {
-  if (!drag) return;
-  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-  drag.moved += Math.abs(dx) + Math.abs(dy); drag.x = e.clientX; drag.y = e.clientY;
-  yaw -= dx * 0.004; pitch = THREE.MathUtils.clamp(pitch - dy * 0.004, -1.3, 1.0);
-});
-canvas.addEventListener('pointerup', e => {
-  if (drag && drag.moved < 8 && !renderer.xr.isPresenting) {
-    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-    ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects(surfaces, false)[0];
-    if (hit) addLabel(m4.makeTranslation(hit.point.x, hit.point.y, hit.point.z));
-  }
-  drag = null;
-});
-
-// --- AR oturumu: hit-test ile gerçek yüzeylere yerleştirme ---
-let hitSource = null, hitPending = false, arMode = false;
-const controller = renderer.xr.getController(0);
-controller.addEventListener('select', () => {
-  if (reticle.visible) addLabel(reticle.matrix);
-  else { // yüzey bulunamadıysa 1 m önüne yerleştir
-    const p = new THREE.Vector3(0, 0, -1).applyMatrix4(controller.matrixWorld);
-    addLabel(m4.makeTranslation(p.x, p.y - 0.25, p.z));
-  }
-});
-scene.add(controller);
-
-async function addARButton() {
-  if (!navigator.xr) return;
-  const timeout = new Promise(r => setTimeout(() => r(false), 3000));
-  const ok = await Promise.race([navigator.xr.isSessionSupported('immersive-ar').catch(() => false), timeout]);
-  if (!ok) return;
-  const b = document.createElement('button');
-  b.textContent = 'Kamerada Aç (AR)';
-  ui.prepend(b);
-  b.onclick = async () => {
-    if (renderer.xr.isPresenting) { renderer.xr.getSession().end(); return; }
-    const session = await navigator.xr.requestSession('immersive-ar', {
-      optionalFeatures: ['hit-test', 'dom-overlay', 'local-floor'],
-      domOverlay: { root: document.getElementById('overlay') },
-    });
-    arMode = true; room.visible = false; scene.background = null;
-    hitPending = true;
-    session.addEventListener('end', () => {
-      arMode = false; room.visible = true; scene.background = BG;
-      hitSource?.cancel?.(); hitSource = null; reticle.visible = false; b.textContent = 'Kamerada Aç (AR)';
-      hint.textContent = PLAY_HINT;
-    });
-    renderer.xr.setReferenceSpaceType('local');
-    await renderer.xr.setSession(session);
-    b.textContent = 'Çıkış';
-    hint.textContent = 'Telefonu masaya/zemine doğrult · halka görününce ekrana dokun';
-  };
-}
-const PLAY_HINT = TOUCH ? 'Bir yüzeye dokun: etiket koy · Sürükle: bak' : 'Masaya, ürüne ya da zemine tıkla: etiket koy · Sürükle: bak';
-hint.textContent = PLAY_HINT;
-await addARButton();
-
-// --- Ana döngü ---
-const clock = new THREE.Clock();
-const camPos = new THREE.Vector3();
-renderer.setAnimationLoop((time, frame) => {
-  const dt = Math.min(clock.getDelta(), 0.05);
-  if (!renderer.xr.isPresenting) {
-    compat.tick(dt);
-    const mo = compat.motion;
-    if (mo.active) camera.rotation.set(mo.pitch, mo.yaw + yaw, mo.roll, 'YXZ');
-    else camera.rotation.set(pitch, yaw, 0, 'YXZ');
-  }
-  if (frame && arMode) {
-    const session = renderer.xr.getSession(), refSpace = renderer.xr.getReferenceSpace();
-    if (hitPending && session.requestHitTestSource) {
-      hitPending = false;
-      session.requestReferenceSpace('viewer')
-        .then(space => session.requestHitTestSource({ space }))
-        .then(src => { hitSource = src; })
-        .catch(() => toast('Bu cihazda yüzey algılama yok; etiketler önüne yerleşecek'));
-    }
-    const results = hitSource ? frame.getHitTestResults(hitSource) : [];
-    reticle.visible = results.length > 0;
-    if (reticle.visible) reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
-  }
-  // Kartlar her zaman kullanıcıya dönük (dik kalarak); yeni eklenen kart hafifçe büyüyerek belirir
-  (renderer.xr.isPresenting ? renderer.xr.getCamera() : camera).getWorldPosition(camPos);
-  for (const a of labels) {
-    const { card, born } = a.userData;
-    card.lookAt(camPos.x, a.position.y + card.position.y, camPos.z);
-    card.scale.setScalar(Math.min(1, 0.6 + (clock.elapsedTime - born) * 2));
-  }
-  renderer.render(scene, camera);
-});
-
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-// --- Otomatik test kancası ---
-window.__hud = { labels, camera, compat, addLabelAt: (x, y, z) => addLabel(m4.makeTranslation(x, y, z)), aim(y, p) { yaw = y; pitch = p; }, get arMode() { return arMode; } };
-document.getElementById('boot').hidden = true;
-</script>
+<script src="../boot.js?v=11"></script>
+<script type="module" src="app.js?v=11"></script>
 </body>
 </html>
