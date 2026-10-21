@@ -92,7 +92,52 @@ const land = await run(`await frames(3); return { ctx: h.settings.context, tuned
 check('Çevirince yatay düzene geçti', land.ctx === 'landscape' && !land.tuned, land);
 check('Dikeydeki ince ayar ayrı korundu', land.kept.includes('center'), land.kept);
 await shot('3-yatay.png');
+
+// 2b) iPhone gibi: WebXR yok, hareketle bakma (jiroskop) çalışmalı
+await send('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' });
+const noXr = await send('Page.addScriptToEvaluateOnNewDocument', { source: `Object.defineProperty(Navigator.prototype, 'xr', { get: () => undefined, configurable: true });` });
+await viewport(390, 844, true);
+await open();
+const ios = await run(`await frames(3); const labels = [...document.querySelectorAll('#ui button')].filter(b => !b.hidden).map(b => b.textContent);
+  return { ctx: h.settings.context, labels };`);
+check('iPhone: VR/AR butonu yok, hareketle bak var', !ios.labels.some(l => /VR|AR/.test(l)) && ios.labels.includes('Hareketle bak'), ios);
+// Dokunmatik emülasyonda fare olayı takılabiliyor; bu buton izin istemediği (Chrome) için sayfa içinden tıklanır
+check('iPhone: hareketle bak butonu açıldı', await run(`const b = [...document.querySelectorAll('#ui button')].find(b => b.textContent === 'Hareketle bak');
+  b?.click(); await frames(2); return h.compat.motion.active;`));
+const gyro = await run(`const fire = o => dispatchEvent(Object.assign(new Event('deviceorientation'), o));
+  fire({ alpha: 0, beta: 90, gamma: 0 }); await frames(3);
+  const flat = { pitch: +h.camera.rotation.x.toFixed(2), yaw: +h.camera.rotation.y.toFixed(2) };
+  fire({ alpha: 30, beta: 120, gamma: 0 }); await frames(3);
+  const tilted = { pitch: +(h.camera.rotation.x * 180 / Math.PI).toFixed(0), yaw: +(h.camera.rotation.y * 180 / Math.PI).toFixed(0) };
+  return { active: h.compat.motion.active, flat, tilted };`);
+check('Jiroskop: dik tutunca ileri bakıyor', gyro.active && Math.abs(gyro.flat.pitch) < 0.05 && Math.abs(gyro.flat.yaw) < 0.05, gyro.flat);
+check('Jiroskop: yukarı eğip sola çevirince kamera dönüyor', Math.abs(gyro.tilted.pitch - 30) <= 2 && Math.abs(gyro.tilted.yaw - 30) <= 2, gyro.tilted);
+await shot('3b-iphone.png');
+await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: noXr.result.identifier });
+await send('Emulation.setUserAgentOverride', { userAgent: '' });
 await touch(false);
+
+// 2c) Oyun kumandası ve ok tuşları (PC, TV, tablet)
+await viewport(1280, 720, false);
+const padStub = await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__pad = null; navigator.getGamepads = () => [window.__pad];` });
+await open();
+const pad = await run(`await frames(3); const y0 = h.camera.rotation.y, e0 = h.state.energy;
+  const btn = p => ({ pressed: p, value: p ? 1 : 0 });
+  window.__pad = { connected: true, axes: [0.8, 0, 0, 0], buttons: Array.from({ length: 16 }, () => btn(false)) };
+  await new Promise(r => setTimeout(r, 400)); const turned = h.camera.rotation.y < y0 - 0.1;
+  window.__pad.axes = [0, 0, 0, 0]; window.__pad.buttons[0] = btn(true); await frames(3);
+  window.__pad.buttons[0] = btn(false); await frames(3); window.__pad = null;
+  return { turned, fired: h.state.energy < e0 - 10 };`);
+check('Kumanda: çubuk sağa çevirdi', pad.turned, pad);
+check('Kumanda: A tuşu ateş etti', pad.fired, pad);
+const y0 = await run('return h.camera.rotation.y');
+await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', code: 'ArrowLeft', key: 'ArrowLeft', windowsVirtualKeyCode: 37 });
+await sleep(400);
+await send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'ArrowLeft', key: 'ArrowLeft', windowsVirtualKeyCode: 37 });
+const y1 = await run('return h.camera.rotation.y');
+check('Ok tuşu: sola döndü', y1 > y0 + 0.1, { önce: +y0.toFixed(2), sonra: +y1.toFixed(2) });
+await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: padStub.result.identifier });
+console.log('Bilgi: otomatik kalite', JSON.stringify(await run('return h.compat.quality')));
 
 // 3) VR (IWER Quest 3 emülatörü): otomatik düzen + kumandayla tutup taşıma
 await viewport(1280, 720, false);

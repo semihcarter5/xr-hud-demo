@@ -1,6 +1,7 @@
 // Fare, dokunmatik ve klavye girişi.
 // Oyun: bir parmak sürükleyerek bakar; o sırada ikinci parmağın dokunuşu anında ateş eder. Tek dokunuş da ateş eder.
 // Düzenleme: dokunuş paneli seçer; iki parmakla sıkıştırma boyutu, çevirme yatırmayı değiştirir; fare tekerleği boyut.
+// Klavye ok tuşları ve oyun kumandası da bakma/ateş için kullanılabilir.
 
 export function setupInput({ el, editor, fire, onLook }) {
   const pointers = new Map(); // pointerId -> { x, y, moved }
@@ -69,9 +70,34 @@ export function setupInput({ el, editor, fire, onLook }) {
     editor.gestureEnd();
   }, { passive: false });
 
+  // Ok tuşları: fare olmadan bakma (dizüstü touchpad, TV klavyesi)
+  const held = new Set();
+  const ARROWS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
   addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('input, textarea, .lil-gui')) return;
+    if (ARROWS.includes(e.code)) { e.preventDefault(); held.add(e.code); return; }
     if (editor.handleKey(e)) return;
     if (e.code === 'Space' && !editor.isEditing()) { e.preventDefault(); fire(); }
   });
+  addEventListener('keyup', e => held.delete(e.code));
+  addEventListener('blur', () => held.clear());
+
+  // Her karede: ok tuşları ve oyun kumandası (sol/sağ çubuk bakar, A veya sağ tetik ateş eder)
+  let padFire = false;
+  const dz = v => (Math.abs(v) < 0.15 ? 0 : v);
+  function update(dt) {
+    let x = (held.has('ArrowRight') ? 1 : 0) - (held.has('ArrowLeft') ? 1 : 0);
+    let y = (held.has('ArrowDown') ? 1 : 0) - (held.has('ArrowUp') ? 1 : 0);
+    const pad = navigator.getGamepads ? [...navigator.getGamepads()].find(p => p && p.connected) : null;
+    if (pad) {
+      x += dz(pad.axes[0] || 0) + dz(pad.axes[2] || 0);
+      y += dz(pad.axes[1] || 0) + dz(pad.axes[3] || 0);
+      const pressed = !!(pad.buttons[0]?.pressed || pad.buttons[7]?.pressed);
+      if (pressed && !padFire && !editor.isEditing()) fire();
+      padFire = pressed;
+    }
+    // onLook sürükleme mantığında: sağa sürüklemek sağa döndürür; çubuk/ok aynı yönde
+    if (x || y) onLook(x * 450 * dt, y * 450 * dt);
+  }
+  return { update };
 }

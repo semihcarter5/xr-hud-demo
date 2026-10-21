@@ -57,7 +57,7 @@ export function defaultSettings() {
     panels: { get: () => Object.fromEntries(Object.keys(auto).map(k => [k, s.overrides[ctx][k] || auto[k]])) },
     setContext: { value(c, aspect, handheld) { ctx = c; auto = autoLayout(c, aspect, handheld); } },
     // Paneli değiştirmeden önce çağrılır: bu ortam için ince ayar kaydı açar (otomatikten kopyalar)
-    edit: { value(name) { return (s.overrides[ctx][name] ||= structuredClone(auto[name])); } },
+    edit: { value(name) { return (s.overrides[ctx][name] ||= JSON.parse(JSON.stringify(auto[name]))); } },
     isTuned: { value() { return Object.keys(s.overrides[ctx]).length > 0; } },
     resetContext: { value() { s.overrides[ctx] = {}; } },
   });

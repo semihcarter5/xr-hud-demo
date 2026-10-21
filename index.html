@@ -2,25 +2,14 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kokpit HUD Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-<style>
-  html, body { margin: 0; height: 100%; background: #03070c; overflow: hidden; color: #bff6ff; font-family: Montserrat, "Segoe UI", sans-serif; }
-  canvas { display: block; touch-action: none; }
-  #hint { position: fixed; top: 12px; left: 16px; right: 16px; text-align: center; font-size: 13px; opacity: .75; pointer-events: none; z-index: 2; }
-  #ui { position: fixed; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; z-index: 2; }
-  #ui button { font: 600 14px Montserrat, "Segoe UI", sans-serif; padding: 10px 18px; border: 1px solid #39e6ff; background: rgba(3, 20, 30, .85); color: #bff6ff; border-radius: 6px; cursor: pointer; }
-  #ui button:focus-visible { outline: 2px solid #7dffb0; outline-offset: 2px; }
-  #toast { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); padding: 8px 16px; border-radius: 6px; background: rgba(3, 20, 30, .92); border: 1px solid #7dffb0; color: #d9ffe9; font-size: 14px; z-index: 3; }
-  .lil-gui { --font-family: Montserrat, "Segoe UI", sans-serif; --width: 270px; }
-  .lil-gui.autoPlace { top: 44px; max-height: calc(100% - 120px); }
-  #boot { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; white-space: pre-line; z-index: 5; pointer-events: none; }
-  #boot[hidden] { display: none; }
-  #boot.err { background: rgba(40, 6, 12, .94); color: #ffd6dc; pointer-events: auto; overflow-wrap: anywhere; }
-</style>
+<link rel="stylesheet" href="style.css?v=7">
+<!-- Eski tarayıcılarda (import map desteklemeyen Safari / Mi Browser vb.) eksik özelliği tamamlar; destekleyenlerde devre dışı kalır -->
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">{ "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
@@ -32,14 +21,15 @@
 <div id="ui"></div>
 <div id="toast" hidden></div>
 <div id="boot">Yükleniyor…</div>
-<script src="boot.js?v=6"></script>
+<script src="boot.js?v=7"></script>
 <script type="module">
 import * as THREE from 'three';
 // ?v=: yeni sürüm yayınlanınca telefon eski dosyaları önbellekten karıştırmasın
-import { createEditor } from './editor.js?v=6';
-import { defaultSettings, mergeSettings, layoutBounds, CONTEXT_NAMES } from './settings.js?v=6';
-import { setupInput } from './input.js?v=6';
-import { setupVR } from './vr.js?v=6';
+import { createEditor } from './editor.js?v=7';
+import { defaultSettings, mergeSettings, layoutBounds, CONTEXT_NAMES } from './settings.js?v=7';
+import { setupInput } from './input.js?v=7';
+import { setupVR } from './vr.js?v=7';
+import { setupCompat } from './compat.js?v=7';
 
 const settings = defaultSettings();
 const T = settings.theme;
@@ -361,7 +351,7 @@ resetBtn.onclick = () => {
 
 // --- Fare / dokunmatik / klavye (input.js) ---
 let yaw = 0, pitch = 0;
-setupInput({
+const input = setupInput({
   el: renderer.domElement, editor,
   fire: () => fire(null),
   onLook(dx, dy) {
@@ -369,6 +359,8 @@ setupInput({
     pitch = THREE.MathUtils.clamp(pitch - dy * 0.004, -1.2, 1.2);
   },
 });
+// Hareketle bakma (jiroskop), otomatik kalite, grafik bağlantısı toparlama (compat.js)
+const compat = setupCompat({ THREE, renderer, ui, toast, touch: TOUCH });
 
 // --- VR: oturum butonları, kumanda/el ile ateş ve panelleri tutup taşıma (vr.js) ---
 const vr = await setupVR({
@@ -378,7 +370,7 @@ const vr = await setupVR({
   onGrab: () => { flash = 'PANEL TUTULDU'; flashT = 1.5; },
   onRelease: panel => { editor.commit(panel); flash = 'PANEL YERLEŞTİ'; flashT = 1; },
 });
-if (!navigator.xr) hint.textContent += ' · WebXR yok, masaüstü modu';
+if (!navigator.xr && !TOUCH) hint.textContent += ' · WebXR yok, masaüstü modu';
 
 // --- Ana döngü ---
 const clock = new THREE.Clock();
@@ -388,7 +380,14 @@ let frame = 0, lastAspect = 0;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   const xr = renderer.xr.isPresenting;
-  if (!xr) camera.rotation.set(pitch, yaw, 0, 'YXZ');
+  if (!xr) {
+    input.update(dt);
+    compat.tick(dt);
+    // Hareketle bakma açıksa yön telefondan gelir; parmakla sağa sola kaydırma üstüne eklenir
+    const m = compat.motion;
+    if (m.active) camera.rotation.set(m.pitch, m.yaw + yaw, m.roll, 'YXZ');
+    else camera.rotation.set(pitch, yaw, 0, 'YXZ');
+  }
   camera.updateMatrixWorld();
   camera.getWorldPosition(camPos);
   camera.getWorldDirection(camDir);
@@ -479,7 +478,7 @@ renderer.setAnimationLoop(() => {
 // --- Otomatik test kancası (AI ajanları ve tarayıcı testleri için) ---
 window.__hud = {
   get state() { return { energy, score, lockT, locked: !!locked, alive: drones.filter(d => d.userData.alive).length }; },
-  drones, camera, panels, settings, editor, vr,
+  drones, camera, panels, settings, editor, vr, compat,
   fire: () => fire(null),
   aim(y, p) { yaw = y; pitch = p; },
 };
