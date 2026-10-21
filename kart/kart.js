@@ -14,8 +14,23 @@
   // Güvenli metin: JSON'daki yazılar HTML olarak değil düz metin olarak basılır
   function text(el, s) { el.textContent = s || ''; }
 
+  // Ön izleme süresi dolduysa (satın alınmadıysa) model yüklenmez
+  function expired() {
+    var until = data.preview && data.preview.until;
+    return !!until && new Date(until + 'T23:59:59') < new Date();
+  }
+
   function render() {
     var b = data.brand || {}, p = data.product || {}, m = data.model || {};
+    if (data.preview) {
+      $('preview').hidden = false;
+      text($('preview'), data.preview.for + ' için hazırlanmış özel ön izleme · yayında değildir');
+      if (expired()) {
+        text($('preview'), 'Bu ön izlemenin süresi doldu');
+        text($('name'), 'Ön izleme süresi doldu'); text($('desc'), 'Bu bağlantı artık kullanılmıyor. Yeni bir ön izleme için bizimle iletişime geçin.');
+        mv.remove(); return;
+      }
+    }
     document.title = p.name + ' · ' + b.name;
     $('example').hidden = !data.example;
     if (b.accent) document.documentElement.style.setProperty('--accent', b.accent);
@@ -49,7 +64,7 @@
     // Model lisans / kaynak bilgisi
     var cr = $('credit'); cr.innerHTML = '';
     if (data.credit) {
-      cr.appendChild(document.createTextNode((data.credit.prefix || '3D model: ')));
+      cr.appendChild(document.createTextNode(data.credit.prefix !== undefined ? data.credit.prefix : '3D model: '));
       if (data.credit.url && /^https:\/\//.test(data.credit.url)) {
         var a = document.createElement('a'); a.href = data.credit.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = data.credit.text; cr.appendChild(a);
       } else cr.appendChild(document.createTextNode(data.credit.text));

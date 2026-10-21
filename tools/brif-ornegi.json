@@ -1,0 +1,24 @@
+{
+  "isletme": "Deneme Mobilya",
+  "slogan": "Ev ve ofis mobilyaları",
+  "renk": "#2f6b5a",
+  "kisi": "Ayşe Hanım",
+  "kanal": "eposta",
+  "sure_gun": 30,
+  "urun": {
+    "ad": "Kadife Berjer",
+    "fiyat": 11900,
+    "para": "TRY",
+    "aciklama": "Kapitone kadife oturak ve masif ayaklarla tek kişilik berjer.",
+    "ozellikler": ["Kadife kumaş", "Masif ahşap ayaklar"],
+    "olculer": "83 × 57 × 69 cm (G × D × Y)"
+  },
+  "secenekler_baslik": "Kumaş",
+  "secenekler": [
+    { "ad": "Mango kadife", "model_varyant": "Mango Velvet", "renk": "#d38a3a", "fiyat_farki": 0 },
+    { "ad": "Tavus kadife", "model_varyant": "Peacock Velvet", "renk": "#1f6a73", "fiyat_farki": 400 }
+  ],
+  "model": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/SheenChair.glb",
+  "model_kaynak": "3D model: Sheen Chair, Khronos Group (CC0)",
+  "satin_al_link": ""
+}
