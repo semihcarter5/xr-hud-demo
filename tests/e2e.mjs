@@ -200,16 +200,17 @@ await shot('7-ar-etiket-ar.png');
 // 6) El menüsü demosu: ekranda tıklayarak, VR'da sol ele bağlı menüye sağ kumandayla basarak
 await viewport(1280, 720, false);
 await open('el-menu/');
+await run(`for (let i = 0; i < 60 && !h.product; i++) await new Promise(r => setTimeout(r, 250));`); // koltuk modeli yüklensin
 const btnPx = id => run(`await frames(3); const b = h.buttons.find(b => b.userData.id === ${JSON.stringify(id)});
   const v = b.getWorldPosition(new h.camera.position.constructor()).project(h.camera);
   return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];`);
-for (const id of ['color', 'spin']) {
+for (const id of ['fabric', 'spin']) {
   const [x, y] = await btnPx(id);
   for (const type of ['mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 });
   await sleep(400);
 }
-const menuState = await run(`return { color: h.state.color, spin: h.state.spin, hex: '#' + h.product.material.color.getHexString() };`);
-check('El menüsü: tıklayınca renk değişti ve dönüş durdu', menuState.color === 1 && menuState.spin === false && menuState.hex === '#ff7a3d', menuState);
+const menuState = await run(`await new Promise(r => setTimeout(r, 300)); return { fabric: h.state.fabric, spin: h.state.spin, mat: h.materials.fabric, price: h.price() };`);
+check('El menüsü: tıklayınca kumaş değişti, fiyat güncellendi, dönüş durdu', menuState.fabric === 1 && /Peacock/.test(menuState.mat) && menuState.price === 13400 && menuState.spin === false, menuState);
 await shot('8-el-menu.png');
 
 await open('el-menu/?emulate');
@@ -229,7 +230,7 @@ const vrMenu = await run(`await frames(10); const d = __xrDevice, L = d.controll
   R.updateButtonValue('trigger', 1); await frames(5); R.updateButtonValue('trigger', 0); await frames(5);
   return { follows, hovered, light: h.state.light };`);
 check('El menüsü: menü sol kumandayı takip ediyor', vrMenu.follows, vrMenu);
-check('El menüsü: sağ kumandayla "Işık" düğmesine basıldı', vrMenu.hovered && vrMenu.light === false, vrMenu);
+check('El menüsü: sağ kumandayla "Işık" düğmesine basıldı (Stüdyo → Gün batımı)', vrMenu.hovered && vrMenu.light === 1, vrMenu);
 await shot('9-el-menu-vr.png');
 
 check('Konsolda hata yok', errors.length === 0, errors);
