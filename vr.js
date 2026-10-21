@@ -70,6 +70,7 @@ export async function setupVR({ THREE, renderer, scene, hudRig, panels, ui, env,
   }
 
   // --- VR / AR butonları (cihaz destekliyorsa görünür) ---
+  let currentMode = null;
   async function addButton(mode, label) {
     if (!navigator.xr) return;
     // Bazı telefonlarda (AR servisleri kontrol edilirken) cevap gecikebilir: demo açılışını bekletme
@@ -87,7 +88,9 @@ export async function setupVR({ THREE, renderer, scene, hudRig, panels, ui, env,
       env.visible = !ar;
       scene.background = ar ? null : BG;
       scene.fog = ar ? null : FOG;
+      currentMode = mode;
       session.addEventListener('end', () => {
+        currentMode = null;
         for (const c of controllers) release(c);
         for (const p of Object.values(panels)) p.userData.outline.visible = false;
         env.visible = true; scene.background = BG; scene.fog = FOG; btn.textContent = label;
@@ -128,5 +131,5 @@ export async function setupVR({ THREE, renderer, scene, hudRig, panels, ui, env,
     }
   }
 
-  return { update, controllers, isGrabbing: () => controllers.some(c => c.userData.grab) };
+  return { update, controllers, mode: () => currentMode, isGrabbing: () => controllers.some(c => c.userData.grab) };
 }

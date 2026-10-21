@@ -3,11 +3,11 @@
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import GUI from 'lil-gui';
 
-const STORE_KEY = 'hud-demo-config-v1';
+const STORE_KEY = 'hud-demo-config-v3'; // v3: otomatik düzen + ince ayar (eski taslaklar yok sayılır)
 const PANEL_NAMES = { 'Pusula': 'compass', 'Nişangâh': 'center', 'Enerji': 'energy', 'Bilgi paneli': 'stats' };
 const MODE_KEYS = { KeyW: 'translate', KeyT: 'rotate', KeyR: 'scale' };
 
-export function createEditor({ THREE, scene, camera, renderer, panels, settings, applySettings, mergeSettings, defaultSettings, toast, onToggle }) {
+export function createEditor({ THREE, scene, camera, renderer, panels, settings, applySettings, mergeSettings, defaultSettings, contextNames, toast, onToggle }) {
   let editing = false, selected = null, saveTimer = 0;
   const r3 = v => Math.round(v * 1000) / 1000;
   const r1 = v => Math.round(v * 10) / 10;
@@ -24,7 +24,6 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
   tc.addEventListener('objectChange', () => {
     const o = tc.object;
     if (!o) return;
-    const p = settings.panels[o.name];
     if (tc.mode === 'scale') {
       // Panel oranı bozulmasın: sürüklenen eksenin değerini (başlangıçtan en çok sapan) tüm eksenlere uygula
       const v = [o.scale.x, o.scale.y, o.scale.z].reduce((a, b) => (Math.abs(b - dragStartScale) > Math.abs(a - dragStartScale) ? b : a));
@@ -35,12 +34,13 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
 
   // Panelin sahnedeki konumunu ayarlara yazar (gizmo ve VR'da elle taşıma ortak kullanır)
   function commit(o) {
-    const p = settings.panels[o.name];
+    const p = settings.edit(o.name); // bu ortamın ince ayarına yaz
     o.position.z = Math.min(o.position.z, settings.hud.distance - 0.6); // göze 60 cm'den fazla yaklaşmasın
     p.position = o.position.toArray().map(r3);
     p.rotation = [o.rotation.x, o.rotation.y, o.rotation.z].map(a => r1(THREE.MathUtils.radToDeg(a)));
     p.scale = r3(o.scale.x);
     syncProxy();
+    updateTitle();
     scheduleSave();
   }
 
@@ -84,7 +84,7 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
 
   function fromProxy() {
     if (!selected) return;
-    const p = settings.panels[selected.name];
+    const p = settings.edit(selected.name);
     p.position = [proxy.x, proxy.y, proxy.z];
     p.rotation = [proxy.rx, proxy.ry, proxy.rz];
     p.scale = proxy.scale;
@@ -106,7 +106,19 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
     applySettings();
     syncProxy();
     gui.controllersRecursive().forEach(c => c.updateDisplay());
-    gui.title('HUD Düzenleyici · ' + (settings.orientation === 'portrait' ? 'Dikey' : 'Yatay'));
+    updateTitle();
+  }
+
+  function updateTitle() {
+    gui.title(contextNames[settings.context] + ' · ' + (settings.isTuned() ? 'ince ayarlı' : 'otomatik'));
+  }
+
+  // Sadece bu ortamın ince ayarlarını siler; diğer ortamlar ve tema korunur
+  function resetContext() {
+    settings.resetContext();
+    refreshAll();
+    scheduleSave();
+    toast(contextNames[settings.context] + ': otomatik düzene dönüldü');
   }
 
   // İki parmak (veya fare tekerleği): seçili paneli büyüt/küçült ve sağa sola yatır
@@ -268,6 +280,8 @@ export function createEditor({ THREE, scene, camera, renderer, panels, settings,
     setEditMode,
     commit,
     reset,
+    resetContext,
+    isTuned: () => settings.isTuned(),
     refresh: refreshAll,
     gestureStart,
     gestureUpdate,

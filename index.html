@@ -32,28 +32,14 @@
 <div id="ui"></div>
 <div id="toast" hidden></div>
 <div id="boot">Yükleniyor…</div>
-<script>
-// Telefonda sorun olursa sebebi ekranda görünsün (geliştirici konsolu olmadan)
-(function () {
-  var boot = document.getElementById('boot');
-  function show(msg) {
-    boot.hidden = false;
-    boot.className = 'err';
-    boot.textContent = msg + '\n\nSayfayı yenile. Düzelmezse Chrome ile aç ve bu yazının ekran görüntüsünü gönder.\n(Kapatmak için dokun)';
-    boot.onclick = function () { boot.hidden = true; };
-  }
-  addEventListener('error', function (e) { show('Hata: ' + (e.message || 'dosya yüklenemedi')); });
-  addEventListener('unhandledrejection', function (e) { show('Hata: ' + (e.reason && e.reason.message || e.reason)); });
-  setTimeout(function () { if (!window.__hud) show('Demo 15 saniyede açılamadı.\nTarayıcı: ' + navigator.userAgent); }, 15000);
-})();
-</script>
+<script src="boot.js?v=6"></script>
 <script type="module">
 import * as THREE from 'three';
 // ?v=: yeni sürüm yayınlanınca telefon eski dosyaları önbellekten karıştırmasın
-import { createEditor } from './editor.js?v=5';
-import { defaultSettings, mergeSettings, LAYOUT_BOUNDS } from './settings.js?v=5';
-import { setupInput } from './input.js?v=5';
-import { setupVR } from './vr.js?v=5';
+import { createEditor } from './editor.js?v=6';
+import { defaultSettings, mergeSettings, layoutBounds, CONTEXT_NAMES } from './settings.js?v=6';
+import { setupInput } from './input.js?v=6';
+import { setupVR } from './vr.js?v=6';
 
 const settings = defaultSettings();
 const T = settings.theme;
@@ -281,7 +267,7 @@ function applySettings() {
     mesh.position.z = Math.min(mesh.position.z, settings.hud.distance - 0.6); // göze 60 cm'den fazla yaklaşmasın
     mesh.scale.setScalar(p.scale);
     mesh.visible = p.visible;
-    mesh.material.opacity = T.opacity;
+    mesh.material.opacity = T.opacity * (settings.context === 'ar' ? 0.8 : 1); // AR: gerçek dünya görünsün
   }
   for (const d of drones) {
     d.material.color.set(T.drone);
@@ -331,6 +317,7 @@ function toast(msg) {
   toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2200);
 }
 const TOUCH = matchMedia('(pointer: coarse)').matches;
+const HEADSET = /OculusBrowser|Quest|Pico|Wolvic/i.test(navigator.userAgent);
 const PLAY_HINT = TOUCH
   ? 'Bir parmakla sürükle: bak · Diğer parmakla dokun: ateş et'
   : 'Sürükle: etrafa bak · Tıkla veya Boşluk: ateş et · Kilitlenince ateş et · E: düzenle';
@@ -343,15 +330,17 @@ const ui = document.getElementById('ui');
 const editBtn = document.createElement('button');
 editBtn.textContent = 'Düzenle (E)';
 ui.appendChild(editBtn);
-// Sıfırla: yanlışlıkla basılmasın diye ikinci dokunuşta çalışır
+// Otomatiğe dön: bu ortamın ince ayarlarını siler; yanlışlıkla basılmasın diye ikinci dokunuşta çalışır
+const RESET_LABEL = 'Otomatiğe dön';
 const resetBtn = document.createElement('button');
-resetBtn.textContent = 'Sıfırla';
+resetBtn.textContent = RESET_LABEL;
 resetBtn.hidden = true;
 ui.appendChild(resetBtn);
 let resetArmed = 0;
 
 const editor = createEditor({
   THREE, scene, camera, renderer, panels, settings, applySettings, mergeSettings, defaultSettings, toast,
+  contextNames: CONTEXT_NAMES,
   onToggle(on) {
     hint.textContent = on ? EDIT_HINT : PLAY_HINT;
     editBtn.textContent = on ? 'Kaydet ve Kapat' : 'Düzenle (E)';
@@ -362,12 +351,12 @@ editBtn.onclick = () => editor.setEditMode(!editor.isEditing());
 resetBtn.onclick = () => {
   if (resetArmed) {
     clearTimeout(resetArmed); resetArmed = 0;
-    resetBtn.textContent = 'Sıfırla';
-    editor.reset();
+    resetBtn.textContent = RESET_LABEL;
+    editor.resetContext();
     return;
   }
   resetBtn.textContent = 'Emin misin? Tekrar dokun';
-  resetArmed = setTimeout(() => { resetArmed = 0; resetBtn.textContent = 'Sıfırla'; }, 3000);
+  resetArmed = setTimeout(() => { resetArmed = 0; resetBtn.textContent = RESET_LABEL; }, 3000);
 };
 
 // --- Fare / dokunmatik / klavye (input.js) ---
@@ -394,7 +383,7 @@ if (!navigator.xr) hint.textContent += ' · WebXR yok, masaüstü modu';
 // --- Ana döngü ---
 const clock = new THREE.Clock();
 const camPos = new THREE.Vector3(), camDir = new THREE.Vector3(), camQ = new THREE.Quaternion(), tmp = new THREE.Vector3();
-let frame = 0;
+let frame = 0, lastAspect = 0;
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
@@ -440,12 +429,17 @@ renderer.setAnimationLoop(() => {
   if (flashT > 0) flashT -= dt;
   if (beamT > 0) { beamT -= dt * 4; beam.material.opacity = Math.max(0, beamT); beam.visible = beamT > 0; }
 
-  // Ekran yönü değişince (telefonu çevirince) o yönün panel düzenine geç; VR her zaman yatay düzen
-  const orientation = xr || camera.aspect >= 1 ? 'landscape' : 'portrait';
-  if (orientation !== settings.orientation) {
-    settings.orientation = orientation;
+  // Ortamı algıla (masaüstü, telefon yatay/dikey, VR, AR) ve otomatik düzeni ona göre hesapla
+  const ctx = xr ? (vr.mode() === 'immersive-ar' ? 'ar' : 'vr')
+    : camera.aspect < 1 ? 'portrait' : TOUCH ? 'landscape' : 'desktop';
+  const aspectKey = Math.round(innerWidth / innerHeight * 20) / 20;
+  if (ctx !== settings.context || aspectKey !== lastAspect) {
+    const changed = ctx !== settings.context;
+    lastAspect = aspectKey;
+    settings.setContext(ctx, aspectKey, !HEADSET);
     applySettings();
     editor.refresh();
+    if (changed && editor.isEditing()) toast('Düzen: ' + CONTEXT_NAMES[ctx] + (settings.isTuned() ? ' (ince ayarlı)' : ' (otomatik)'));
   }
 
   // HUD: masaüstünde sabit ve pencereye sığar, VR'da başı yumuşak takip eder
@@ -459,7 +453,7 @@ renderer.setAnimationLoop(() => {
     const visH = 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), visW = visH * camera.aspect;
     const makeRoom = editor.isPanelOpen() && innerWidth >= 700; // geniş ekranda açık ayar paneline yer aç
     const fit = makeRoom ? 0.62 : 0.94;
-    const b = LAYOUT_BOUNDS[orientation];
+    const b = layoutBounds(settings.auto); // sığdırma otomatik düzene göre: ince ayar yaparken HUD zıplamasın
     hudRig.scale.setScalar(Math.min(fit * visW / b.w, fit * 0.85 * visH / b.h));
     if (makeRoom) hudRig.position.addScaledVector(_v1.set(-1, 0, 0).applyQuaternion(camQ), visW * 0.12);
   }
