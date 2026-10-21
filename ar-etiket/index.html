@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="../style.css?v=8">
+<link rel="stylesheet" href="../style.css?v=9">
 <style>
   #types { display: flex; gap: 6px; }
   #ui button.on { background: #39e6ff; color: #03141e; }
@@ -20,7 +20,7 @@
 <body>
 <div id="overlay">
   <div id="hint"></div>
-  <a id="navlink" href="../">← Kokpit HUD demosu</a>
+  <nav id="navlink"><a href="../">Kokpit HUD</a> · <a href="../el-menu/">El menüsü</a></nav>
   <div id="ui">
     <div id="types"></div>
     <input id="labelText" maxlength="40" placeholder="Etiket yazısı">
@@ -30,10 +30,10 @@
   <div id="toast" hidden></div>
 </div>
 <div id="boot">Yükleniyor…</div>
-<script src="../boot.js?v=8"></script>
+<script src="../boot.js?v=9"></script>
 <script type="module">
 import * as THREE from 'three';
-import { setupCompat } from '../compat.js?v=8';
+import { setupCompat } from '../compat.js?v=9';
 
 // ?emulate: Meta IWER emülatörü (gözlük/telefon olmadan AR testi)
 if (new URLSearchParams(location.search).has('emulate')) {

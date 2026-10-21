@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 <!-- Eski tarayıcılarda (import map desteklemeyen Safari / Mi Browser vb.) eksik özelliği tamamlar; destekleyenlerde devre dışı kalır -->
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">{ "imports": {
@@ -20,17 +20,17 @@
 <div id="hint"></div>
 <div id="ui"></div>
 <div id="toast" hidden></div>
-<a id="navlink" href="ar-etiket/">AR etiket demosu →</a>
+<nav id="navlink">Diğer demolar: <a href="ar-etiket/">AR etiket</a> · <a href="el-menu/">El menüsü</a></nav>
 <div id="boot">Yükleniyor…</div>
-<script src="boot.js?v=8"></script>
+<script src="boot.js?v=9"></script>
 <script type="module">
 import * as THREE from 'three';
 // ?v=: yeni sürüm yayınlanınca telefon eski dosyaları önbellekten karıştırmasın
-import { createEditor } from './editor.js?v=8';
-import { defaultSettings, mergeSettings, layoutBounds, CONTEXT_NAMES } from './settings.js?v=8';
-import { setupInput } from './input.js?v=8';
-import { setupVR } from './vr.js?v=8';
-import { setupCompat } from './compat.js?v=8';
+import { createEditor } from './editor.js?v=9';
+import { defaultSettings, mergeSettings, layoutBounds, CONTEXT_NAMES } from './settings.js?v=9';
+import { setupInput } from './input.js?v=9';
+import { setupVR } from './vr.js?v=9';
+import { setupCompat } from './compat.js?v=9';
 
 const settings = defaultSettings();
 const T = settings.theme;

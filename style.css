@@ -29,4 +29,5 @@ canvas { display: block; touch-action: none; }
 #boot[hidden] { display: none; }
 #boot.err { background: rgba(40, 6, 12, .94); color: #ffd6dc; pointer-events: auto; overflow-wrap: anywhere; }
 /* Demolar arası geçiş bağlantısı */
+#navlink a { color: #7de8ff; }
 #navlink { position: fixed; top: calc(64px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); color: #bff6ff; font-size: 13px; z-index: 2; opacity: .85; }

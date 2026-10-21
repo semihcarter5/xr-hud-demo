@@ -197,6 +197,41 @@ const arPlace = await run(`await frames(10); const before = h.labels.length;
 check('AR etiket: AR oturumunda dokununca etiket kondu', arPlace.ar && arPlace.placed >= 1, arPlace);
 await shot('7-ar-etiket-ar.png');
 
+// 6) El menüsü demosu: ekranda tıklayarak, VR'da sol ele bağlı menüye sağ kumandayla basarak
+await viewport(1280, 720, false);
+await open('el-menu/');
+const btnPx = id => run(`await frames(3); const b = h.buttons.find(b => b.userData.id === ${JSON.stringify(id)});
+  const v = b.getWorldPosition(new h.camera.position.constructor()).project(h.camera);
+  return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];`);
+for (const id of ['color', 'spin']) {
+  const [x, y] = await btnPx(id);
+  for (const type of ['mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 });
+  await sleep(400);
+}
+const menuState = await run(`return { color: h.state.color, spin: h.state.spin, hex: '#' + h.product.material.color.getHexString() };`);
+check('El menüsü: tıklayınca renk değişti ve dönüş durdu', menuState.color === 1 && menuState.spin === false && menuState.hex === '#ff7a3d', menuState);
+await shot('8-el-menu.png');
+
+await open('el-menu/?emulate');
+check('El menüsü: VR butonu göründü', await clickButton('VR'));
+await sleep(2500);
+const vrMenu = await run(`await frames(10); const d = __xrDevice, L = d.controllers.left, R = d.controllers.right;
+  L.position.set(-0.2, 1.25, -0.35); await frames(10);
+  const lp = new h.camera.position.constructor(-0.2, 1.25 + 0.09, -0.35);
+  const follows = h.menu.position.distanceTo(lp) < 0.06 && h.menu.visible;
+  // Sağ kumandayı "Işık" düğmesine doğrult: düğmeden kullanıcıya doğru 30 cm geri çekil ve düğmeye bak
+  const b = h.buttons.find(b => b.userData.id === 'light'); const bp = b.getWorldPosition(lp.clone());
+  const eye = bp.clone().add(lp.clone().set(0.05, 0.12, 0.3));
+  const M = new h.camera.matrix.constructor().lookAt(eye, bp, lp.clone().set(0, 1, 0));
+  const q = new h.camera.quaternion.constructor().setFromRotationMatrix(M);
+  R.position.set(eye.x, eye.y, eye.z); R.quaternion.set(q.x, q.y, q.z, q.w); await frames(10);
+  const hovered = b.userData.hover;
+  R.updateButtonValue('trigger', 1); await frames(5); R.updateButtonValue('trigger', 0); await frames(5);
+  return { follows, hovered, light: h.state.light };`);
+check('El menüsü: menü sol kumandayı takip ediyor', vrMenu.follows, vrMenu);
+check('El menüsü: sağ kumandayla "Işık" düğmesine basıldı', vrMenu.hovered && vrMenu.light === false, vrMenu);
+await shot('9-el-menu-vr.png');
+
 check('Konsolda hata yok', errors.length === 0, errors);
 console.log(`\n${checks.filter(c => c.ok).length}/${checks.length} kontrol geçti · ekran görüntüleri: ${OUT}`);
 ws.close();
